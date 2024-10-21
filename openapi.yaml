@@ -1,45 +1,35 @@
 openapi: 3.0.0
 info:
-  title: Sample API
-  description: This is a sample API with one GET endpoint
+  title: washmonitor-api
+  description: This is the API backend for the WashMonitor application
   version: 1.0.0
 servers:
-  - url: https://api.example.com/v1
+  - url: http://localhost:8080/api/v1
 paths:
-  /users:
-    get:
-      summary: Get users
-      description: Retrieve a list of users
-      parameters:
-        - name: limit
-          in: query
-          required: false
-          schema:
-            type: integer
-            default: 10
-        - name: offset
-          in: query
-          required: false
-          schema:
-            type: integer
-            default: 0
+  /sendMessage:
+    post:
+      summary: Sends a message to a specific device
+      description: Sends a message to a specific device based on the device ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  description: The message to send
+                  example: "Hello, world!"
+                deviceId:
+                  type: string
+                  description: The ID of the device to send the message to
+                  example: "123456"
       responses:
         '200':
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/User'
-components:
-  schemas:
-    User:
-      type: object
-      properties:
-        id:
-          type: integer
-        name:
-          type: string
-        email:
-          type: string
+          description: Successful creation
+        '400':
+          description: Invalid input or device id not found
+        '500':
+          description: Internal server error
+
