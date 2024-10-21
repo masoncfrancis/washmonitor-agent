@@ -3,11 +3,16 @@ package washmonitor_api
 import (
 	"fmt"
 	"github.com/gofiber/fiber/v2"
+	"github.com/joho/godotenv"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // Main function
 func main() {
-	println("Hello, World!")
+	// Load the .env file
+	if err := godotenv.Load(); err != nil {
+		fmt.Println("Error loading .env file")
+	}
 
 	app := fiber.New()
 
@@ -29,7 +34,11 @@ func main() {
 			})
 		}
 
-		// Connect to mongodb and check
+		// Connect to mongodb, check if the device exists, and verify auth key
+		// If the device exists, send a message to the discord webhook
+		// If the device does not exist, return an error message
+		// If the auth key is invalid, return an error message
+		// TODO finish this
 
 	})
 
