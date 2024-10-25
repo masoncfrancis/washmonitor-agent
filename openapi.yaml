@@ -21,10 +21,6 @@ paths:
                   type: string
                   description: The message to send
                   example: "Hello, world!"
-                deviceId:
-                  type: string
-                  description: The ID of the device to send the message to
-                  example: "123456"
       responses:
         '200':
           description: Successful creation
