@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Laundry Dashboard</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            display: flex;
+        }
+        .button {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 8em;
+            cursor: pointer;
+        }
+        .button1 {
+            background-color: #4CAF50; /* Green */
+            color: white;
+        }
+        .button2 {
+            background-color: #008CBA; /* Blue */
+            color: white;
+        }
+        .button:active {
+            filter: none; /* Remove brightness change on active */
+        }
+        .button.active {
+            filter: none; /* Remove brightness change on active */
+        }
+        .loader {
+            margin: 20px auto 0;
+            border: 10px solid #EAF0F6;
+            border-radius: 50%;
+            border-top: 10px solid #000000;
+            border-bottom: 10px solid #000000;
+            width: 80px;
+            height: 80px;
+            animation: spinner 2s linear infinite;
+        }
+        .button1.active {
+            display: flex;
+            flex-direction: column;
+        }
+        .button2.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        @keyframes spinner {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+        }
+    </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const buttons = document.querySelectorAll('.button');
+            buttons.forEach(button => {
+                button.addEventListener('click', () => {
+                    button.classList.toggle('active');
+                    if (button.classList.contains('button1')) {
+                        if (button.classList.contains('active')) {
+                            button.innerHTML = 'Washer running <div class="loader"></div>';
+                        } else {
+                            button.textContent = 'Washer';
+                        }
+                    } else if (button.classList.contains('button2')) {
+                        if (button.classList.contains('active')) {
+                            button.innerHTML = 'Dryer running <div class="loader"></div>';
+                        } else {
+                            button.textContent = 'Dryer';
+                        }
+                    }
+                });
+            });
+        });
+    </script>
+</head>
+<body>
+    <div class="button button1">Washer</div>
+    <div class="button button2">Dryer</div>
+</body>
+</html>
