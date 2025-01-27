@@ -7,7 +7,7 @@ const LaundryDashboard = () => {
 
     const handleButtonClick = (type: 'washer' | 'dryer') => {
         setLoading(true);
-        const apiUrl = 'http://localhost:3001';
+        const apiUrl = '/';
 
         fetch(apiUrl, {method: 'GET'})
             .then(response => {
