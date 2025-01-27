@@ -9,7 +9,7 @@ const LaundryDashboard = () => {
         setLoading(true);
         const apiUrl = 'http://localhost:3001';
 
-        fetch(apiUrl, {method: 'POST'})
+        fetch(apiUrl, {method: 'GET'})
             .then(response => {
                 if (response.ok) {
                     if (type === 'washer') {
@@ -19,9 +19,7 @@ const LaundryDashboard = () => {
                     }
                 }
                 setLoading(false);
-                return response.json();
             })
-            .then(data => console.log(data))
             .catch(error => {
                 console.error('Error:', error);
                 setLoading(false);
@@ -31,14 +29,14 @@ const LaundryDashboard = () => {
     return (
         <div className="flex h-screen w-screen">
             <div
-                className={`flex-1 flex justify-center items-center text-4xl cursor-pointer text-center break-words ${washerActive ? 'bg-green-500 text-white' : 'bg-green-500 text-white'}`}
+                className={`flex-1 flex flex-col justify-center items-center text-4xl cursor-pointer text-center break-words ${washerActive ? 'bg-green-500 text-white' : 'bg-green-500 text-white'}`}
                 onClick={() => handleButtonClick('washer')}
             >
                 {washerActive ? 'Washer running' : 'Washer'}
                 {washerActive && <div className="loader mt-4"></div>}
             </div>
             <div
-                className={`flex-1 flex justify-center items-center text-4xl cursor-pointer text-center break-words ${dryerActive ? 'bg-blue-500 text-white' : 'bg-blue-500 text-white'}`}
+                className={`flex-1 flex flex-col justify-center items-center text-4xl cursor-pointer text-center break-words ${dryerActive ? 'bg-blue-500 text-white' : 'bg-blue-500 text-white'}`}
                 onClick={() => handleButtonClick('dryer')}
             >
                 {dryerActive ? 'Dryer running' : 'Dryer'}

@@ -1,7 +1,7 @@
 import LaundryDashboard from '@/components/LaundryDashboard';
 
 const Home = () => {
-    return <LaundryDashboard />;
+  return <LaundryDashboard />;
 };
 
 export default Home;
