@@ -54,38 +54,74 @@
             display: flex;
             flex-direction: column;
         }
-
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        .overlay.show {
+            display: flex;
+            opacity: 1;
+        }
+        .overlay .loader {
+            width: 60px;
+            height: 60px;
+        }
         @keyframes spinner {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const buttons = document.querySelectorAll('.button');
+            const overlay = document.querySelector('.overlay');
             buttons.forEach(button => {
                 button.addEventListener('click', () => {
-                    button.classList.toggle('active');
+                    overlay.classList.add('show');
+                    let apiUrl = '';
                     if (button.classList.contains('button1')) {
-                        if (button.classList.contains('active')) {
-                            button.innerHTML = 'Washer running <div class="loader"></div>';
-                        } else {
-                            button.textContent = 'Washer';
-                        }
+                        apiUrl = button.classList.contains('active') ? 'http://localhost:3001' : 'http://localhost:3001';
                     } else if (button.classList.contains('button2')) {
-                        if (button.classList.contains('active')) {
-                            button.innerHTML = 'Dryer running <div class="loader"></div>';
-                        } else {
-                            button.textContent = 'Dryer';
-                        }
+                        apiUrl = button.classList.contains('active') ? 'http://localhost:3001' : 'http://localhost:3001';
                     }
+                    fetch(apiUrl, { method: 'POST' })
+                        .then(response => {
+                            if (response.ok) {
+                                button.classList.toggle('active');
+                                if (button.classList.contains('button1')) {
+                                    button.innerHTML = button.classList.contains('active') ? 'Washer running <div class="loader"></div>' : 'Washer';
+                                } else if (button.classList.contains('button2')) {
+                                    button.innerHTML = button.classList.contains('active') ? 'Dryer running <div class="loader"></div>' : 'Dryer';
+                                }
+                            }
+                            overlay.classList.remove('show');
+                            return response.json();
+                        })
+                        .then(data => console.log(data))
+                        .catch(error => {
+                            console.error('Error:', error);
+                            overlay.classList.remove('show');
+                        });
                 });
             });
         });
     </script>
 </head>
 <body>
-    <div class="button button1">Washer</div>
-    <div class="button button2">Dryer</div>
+<div class="button button1">Washer</div>
+<div class="button button2">Dryer</div>
+<div class="overlay">
+    <div class="loader"></div>
+</div>
 </body>
 </html>
