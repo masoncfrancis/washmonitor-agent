@@ -32,14 +32,14 @@ const LaundryDashboard = () => {
                 className={`flex-1 flex flex-col justify-center items-center text-4xl cursor-pointer text-center break-words ${washerActive ? 'bg-green-500 text-white' : 'bg-green-500 text-white'}`}
                 onClick={() => handleButtonClick('washer')}
             >
-                {washerActive ? 'Washer running' : 'Washer'}
+                {washerActive ? 'Monitoring Washer' : 'Washer'}
                 {washerActive && <div className="loader mt-4"></div>}
             </div>
             <div
                 className={`flex-1 flex flex-col justify-center items-center text-4xl cursor-pointer text-center break-words ${dryerActive ? 'bg-blue-500 text-white' : 'bg-blue-500 text-white'}`}
                 onClick={() => handleButtonClick('dryer')}
             >
-                {dryerActive ? 'Dryer running' : 'Dryer'}
+                {dryerActive ? 'Monitoring Dryer' : 'Dryer'}
                 {dryerActive && <div className="loader mt-4"></div>}
             </div>
             {loading && (
