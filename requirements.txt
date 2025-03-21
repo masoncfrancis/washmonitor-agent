@@ -1,0 +1,3 @@
+fastapi~=0.115.11
+ultralytics~=8.3.94
+pillow~=11.0
