@@ -1,3 +1,3 @@
 # washmonitor-agent
 
-The main service for washmonitor
+The agent service for washmonitor
