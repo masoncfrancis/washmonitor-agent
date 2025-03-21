@@ -44,7 +44,15 @@ The API allows the user to interact with the agent. The user may:
 
 ### Prerequisites
 
+Creating a virtual environment of Python 3.12 is recommended.
+
 You will need to install a few dependencies, which are found in the `requirements.txt` file. Before you install those, you'll need to install pytorch. You can do this by following the instructions on the [pytorch website](https://pytorch.org/get-started/locally/). Make sure to install the version that is appropriate for your system hardware and OS. 
+
+Then, you can install the other dependencies by running:
+
+```bash
+pip install -r requirements.txt
+```
 
 ### Environment Variables
 
