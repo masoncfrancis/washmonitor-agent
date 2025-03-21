@@ -23,7 +23,7 @@ Then, once per minute, the washmonitor agent needs to determine which of these t
 - `running`
 - `stopped`
 
-To do so, the agent will:
+To determine this, the agent will:
 
 - Query a URL where it can get a JPG of the washer
 - Uses a ML model to find the washer's control panel in the image
@@ -39,7 +39,6 @@ The API allows the user to interact with the agent. The user may:
 - Query the operational state of the agent
 - Trigger the agent's operational state to switch to `monitor`
 - Trigger the agent's operational state to switch to `idle`
-
 
 ## Getting Started
 
