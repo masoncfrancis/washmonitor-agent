@@ -1,3 +1,3 @@
-# washmonitor-api
+# washmonitor-agent
 
-The api backend for washmonitor
+The main service for washmonitor
