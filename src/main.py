@@ -1,6 +1,9 @@
 from fastapi import FastAPI, HTTPException
 from fastapi_utils.tasks import repeat_every
 from pydantic import BaseModel
+from dotenv import load_dotenv
+
+load_dotenv()  # Load environment variables from a .env file
 
 app = FastAPI()
 
@@ -26,6 +29,10 @@ def set_agent_status(request: AgentStatusRequest):
 @app.get("/getAgentStatus")
 def get_agent_status():
     return {"status": agent_status["status"]}
+
+@app.get("healthcheck")
+def healthcheck():
+    return {"status": "ok"}
 
 #
 # Background task to get washing machine status every 60 seconds
