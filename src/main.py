@@ -64,6 +64,8 @@ def getWashingMachineStatus():
             pass # Placeholder for actual processing logic
         else:
             washerStoppedCount += 1
+            imgProc.deleteImage(washerImageFilePath)
+            print("Control panel not detected. Incrementing stopped count.")
             
         # If the washing machine is stopped for 5 consecutive checks, set the status to idle
         if washerStoppedCount >= 5:
