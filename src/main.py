@@ -46,7 +46,6 @@ def healthCheck():
 #
 # Background task to get washing machine status every 60 seconds
 #
-
 @app.event("startup")
 @repeat_every(seconds=60)  # Run every 60 seconds
 def getWashingMachineStatus():
