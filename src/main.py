@@ -3,6 +3,10 @@ from fastapi_utils.tasks import repeat_every
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from enum import Enum  # Import Enum for status validation
+import proc.img as imgProc  # Import the image processing module
+import proc.ml as mlProc  # Import the machine learning module
+import os
+
 
 load_dotenv()  # Load environment variables from a .env file
 
@@ -22,19 +26,21 @@ class AgentStatusRequest(BaseModel):
     status: AgentStatus  # Use the Enum for validation
 
 # In-memory storage for agent status
-agent_status = {"status": AgentStatus.IDLE.value}  # Use Enum value
+agentStatus = {"status": AgentStatus.IDLE.value}  # Use Enum value
+
+washerStoppedCount = 0  # Counter for stopped washing machine
 
 @app.post("/setAgentStatus")
-def set_agent_status(request: AgentStatusRequest):
-    agent_status["status"] = request.status.value  # Use Enum value
-    return {"message": "The status of the agent has been set", "status": agent_status["status"]}
+def setAgentStatus(request: AgentStatusRequest):
+    agentStatus["status"] = request.status.value  # Use Enum value
+    return {"message": "The status of the agent has been set", "status": agentStatus["status"]}
 
 @app.get("/getAgentStatus")
-def get_agent_status():
-    return {"status": agent_status["status"]}
+def getAgentStatus():
+    return {"status": agentStatus["status"]}
 
 @app.get("/healthcheck")
-def healthcheck():
+def healthCheck():
     return {"status": "ok"}
 
 #
@@ -43,17 +49,28 @@ def healthcheck():
 
 @app.event("startup")
 @repeat_every(seconds=60)  # Run every 60 seconds
-def get_washing_machine_status():
-    if agent_status["status"] == AgentStatus.MONITOR.value:
-        # Here you would implement the logic to check the washing machine status
-        # For example, you could call an external API or check a database
-        # For demonstration purposes, we'll just simulate it with a print statement
-        print("Checking washing machine status...")
-        
-        # Simulate getting the washing machine status
-        washing_machine_status = "running" # Placeholder for actual status
-        print(f"Washing machine status: {washing_machine_status}")
+def getWashingMachineStatus():
+    if agentStatus["status"] == AgentStatus.MONITOR.value:
 
-    # Simulate getting the washing machine status
-    # In a real-world scenario, this would involve calling an external API or checking a database
-    washing_machine_status = "running"
+        print("Checking washing machine status...")
+
+        # Get the image of the washing machine
+        washerImageFilePath = imgProc.getImage(os.environ('WASHER_CAMERA_URL'))
+
+        # Determine if the image contains a control panel
+        result = mlProc.cropToControlPanel(washerImageFilePath)
+        if result["status"] == True:
+            print("Control panel detected")
+            pass # Placeholder for actual processing logic
+        else:
+            washerStoppedCount += 1
+            
+        # If the washing machine is stopped for 5 consecutive checks, set the status to idle
+        if washerStoppedCount >= 5:
+            agentStatus["status"] = AgentStatus.IDLE.value
+            print("Washing machine is stopped. Setting agent status to idle.")
+            washerStoppedCount = 0
+        
+        
+        washingMachineStatus = "running" # Placeholder for actual status
+        print(f"Washing machine status: {washingMachineStatus}")

@@ -19,12 +19,12 @@ def getImage(url):
         str: The path to the saved image file.
     """
     # Create a 'temp' directory in the current working directory if it doesn't exist
-    temp_dir = os.path.join(os.getcwd(), 'temp')
-    os.makedirs(temp_dir, exist_ok=True)
+    tempDir = os.path.join(os.getcwd(), 'temp')
+    os.makedirs(tempDir, exist_ok=True)
     
     # Generate a random file name
-    temp_file_name = f"{uuid.uuid4()}.jpg"
-    temp_file_path = os.path.join(temp_dir, temp_file_name)
+    tempFileName = f"{uuid.uuid4()}.jpg"
+    tempFilePath = os.path.join(tempDir, tempFileName)
 
     # Fetch the image from the URL
     response = requests.get(url)
@@ -32,22 +32,22 @@ def getImage(url):
     # Check if the request was successful
     if response.status_code == 200:
         # Save the image to the temporary file
-        with open(temp_file_path, 'wb') as f:
+        with open(tempFilePath, 'wb') as f:
             f.write(response.content)
-        return temp_file_path
+        return tempFilePath
     else:
         raise Exception(f"Failed to fetch image from {url}. Status code: {response.status_code}")
     
 
-def deleteImage(image_path):
+def deleteImage(imagePath):
     """
     Delete the specified image file.
 
     Args:
-        image_path (str): The path to the image file to delete.
+        imagePath (str): The path to the image file to delete.
     """
     try:
-        os.remove(image_path)
+        os.remove(imagePath)
     except Exception as e:
         print(f"Error deleting image: {e}")
         
