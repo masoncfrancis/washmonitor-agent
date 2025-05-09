@@ -61,6 +61,7 @@ def getWashingMachineStatus():
         result = mlProc.cropToControlPanel(washerImageFilePath)
         if result["status"] == True:
             print("Control panel detected")
+            imgProc.deleteImage(washerImageFilePath) # Delete the original image because we don't need it anymore
             pass # Placeholder for actual processing logic
         else:
             washerStoppedCount += 1
