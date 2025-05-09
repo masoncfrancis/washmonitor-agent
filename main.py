@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi_utils.tasks import repeat_every
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -46,9 +46,11 @@ def healthCheck():
 #
 # Background task to get washing machine status every 60 seconds
 #
-@app.event("startup")
-@repeat_every(seconds=60)  # Run every 60 seconds
+
+# TODO I have decided to make this program just an agent, and the API will be served by a Go program
 def getWashingMachineStatus():
+    global washerStoppedCount  # Declare the global variable
+
     if agentStatus["status"] == AgentStatus.MONITOR.value:
 
         print("Checking washing machine status...")
@@ -60,10 +62,10 @@ def getWashingMachineStatus():
         result = mlProc.cropToControlPanel(washerImageFilePath)
         if result["status"] == True:
             print("Control panel detected")
-            imgProc.deleteImage(washerImageFilePath) # Delete the original image because we don't need it anymore
-            pass # Placeholder for actual processing logic
+            imgProc.deleteImage(washerImageFilePath)  # Delete the original image because we don't need it anymore
+            pass  # Placeholder for actual processing logic
         else:
-            washerStoppedCount += 1
+            washerStoppedCount += 1  # Increment the global variable
             imgProc.deleteImage(washerImageFilePath)
             print("Control panel not detected. Incrementing stopped count.")
             
@@ -73,6 +75,5 @@ def getWashingMachineStatus():
             print("Washing machine is stopped. Setting agent status to idle.")
             washerStoppedCount = 0
         
-        
-        washingMachineStatus = "running" # Placeholder for actual status
+        washingMachineStatus = "running"  # Placeholder for actual status
         print(f"Washing machine status: {washingMachineStatus}")
