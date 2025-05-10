@@ -5,6 +5,8 @@
 
 from PIL import Image
 from ultralytics import YOLO
+import json
+import os
 import uuid
 
 def cropToControlPanel(imagePath):

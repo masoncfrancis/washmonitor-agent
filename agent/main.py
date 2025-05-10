@@ -55,8 +55,6 @@ def getWashingMachineStatus():
             print("Control panel not detected. Incrementing stopped count.")
             return WasherStatus.STOPPED.value
         
-        print(f"Washing machine status: {washingMachineStatus}")
-
 
 if __name__ == "__main__":
 
