@@ -1,4 +1,9 @@
-FROM python:3.12-alpine
+FROM ultralytics/ultralytics:latest-python
 
 WORKDIR /app
 
+COPY . .
+
+RUN pip install -r requirements.txt
+
+CMD ["python", "main.py"]

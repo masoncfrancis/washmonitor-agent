@@ -27,7 +27,7 @@ def cropToControlPanel(imagePath):
     model = YOLO("models/detect.pt")  # Load the YOLO model
 
     result = model(imagePath)  # Perform inference on the image
-    if len(result.boxes) == 1:  # Check if 1 box is detected
+    if len(result[0].boxes) == 1:  # Check if 1 box is detected
 
         status = True  # Set status to true if a control panel is detected
 

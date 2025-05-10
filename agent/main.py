@@ -22,7 +22,6 @@ class WasherStatus(Enum):
 washerStoppedCount = 0  # Counter for stopped washing machine
 agentStatus = AgentStatus.IDLE.value  # Use Enum value
 
-
 def setAgentStatus(status: AgentStatus):
     # TODO query API to set the status
    return status.value
@@ -37,12 +36,12 @@ def getAgentStatus():
 def getWashingMachineStatus():
     global washerStoppedCount  # Declare the global variable
 
-    if agentStatus["status"] == AgentStatus.MONITOR.value:
+    if agentStatus == AgentStatus.MONITOR.value:
 
         print("Checking washing machine status...")
 
         # Get the image of the washing machine
-        washerImageFilePath = imgProc.getImage(os.environ('WASHER_CAMERA_URL'))
+        washerImageFilePath = imgProc.getImage(os.environ.get('WASHER_CAMERA_URL'))
 
         # Determine if the image contains a control panel
         result = mlProc.cropToControlPanel(washerImageFilePath)
