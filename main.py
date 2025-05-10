@@ -1,51 +1,37 @@
-from fastapi import FastAPI
-from fastapi_utils.tasks import repeat_every
-from pydantic import BaseModel
 from dotenv import load_dotenv
 from enum import Enum  # Import Enum for status validation
 import proc.img as imgProc  # Import the image processing module
 import proc.ml as mlProc  # Import the machine learning module
 import os
+import time
 
-
-load_dotenv()  # Load environment variables from a .env file
-
-app = FastAPI()
-
-#
-# Endpoint stuff
-#
 
 # Define the AgentStatus Enum
 class AgentStatus(Enum):
     MONITOR = "monitor"
     IDLE = "idle"
 
-# Define the request model for /setAgentStatus
-class AgentStatusRequest(BaseModel):
-    status: AgentStatus  # Use the Enum for validation
 
-# In-memory storage for agent status
-agentStatus = {"status": AgentStatus.IDLE.value}  # Use Enum value
+# Define the WasherStatus Enum
+class WasherStatus(Enum):
+    RUNNING = "running"
+    STOPPED = "stopped"
 
+
+# Global vars
 washerStoppedCount = 0  # Counter for stopped washing machine
+agentStatus = AgentStatus.IDLE.value  # Use Enum value
 
-@app.post("/setAgentStatus")
-def setAgentStatus(request: AgentStatusRequest):
-    agentStatus["status"] = request.status.value  # Use Enum value
-    return {"message": "The status of the agent has been set", "status": agentStatus["status"]}
 
-@app.get("/getAgentStatus")
+def setAgentStatus(status: AgentStatus):
+    # TODO query API to set the status
+   return status.value
+
+
 def getAgentStatus():
-    return {"status": agentStatus["status"]}
+    return AgentStatus.MONITOR.value # placeholder
+    # TODO query API to get the actual value
 
-@app.get("/healthcheck")
-def healthCheck():
-    return {"status": "ok"}
-
-#
-# Background task to get washing machine status every 60 seconds
-#
 
 # TODO I have decided to make this program just an agent, and the API will be served by a Go program
 def getWashingMachineStatus():
@@ -65,15 +51,42 @@ def getWashingMachineStatus():
             imgProc.deleteImage(washerImageFilePath)  # Delete the original image because we don't need it anymore
             pass  # Placeholder for actual processing logic
         else:
-            washerStoppedCount += 1  # Increment the global variable
             imgProc.deleteImage(washerImageFilePath)
             print("Control panel not detected. Incrementing stopped count.")
-            
-        # If the washing machine is stopped for 5 consecutive checks, set the status to idle
-        if washerStoppedCount >= 5:
-            agentStatus["status"] = AgentStatus.IDLE.value
-            print("Washing machine is stopped. Setting agent status to idle.")
-            washerStoppedCount = 0
+            return WasherStatus.STOPPED.value
         
-        washingMachineStatus = "running"  # Placeholder for actual status
         print(f"Washing machine status: {washingMachineStatus}")
+
+
+if __name__ == "__main__":
+
+    load_dotenv()
+
+    last_washer_check = 0
+    last_agent_check = 0
+
+    while True:
+        now = time.time()
+
+        # Check agent status every 5 seconds, always
+        if now - last_agent_check >= 5:
+            agentStatus = getAgentStatus()
+            last_agent_check = now
+
+        # Check washer status every 60 seconds, only if agent is monitoring
+        if agentStatus == AgentStatus.MONITOR.value and now - last_washer_check >= 60:
+            washerStatus = getWashingMachineStatus()
+
+            if washerStatus == WasherStatus.STOPPED.value:
+                washerStoppedCount += 1
+            elif washerStatus == WasherStatus.RUNNING.value:
+                washerStoppedCount = 0
+
+            if washerStoppedCount >= 5:
+                agentStatus = setAgentStatus(AgentStatus.IDLE)
+                print("Washing machine is stopped. Setting agent status to idle.")
+                washerStoppedCount = 0
+
+            last_washer_check = now
+
+        time.sleep(1)  # Prevent busy-waiting
