@@ -1,0 +1,40 @@
+openapi: 3.1.1
+info:
+  title: washmonitor-agent-api
+  description: This is the API served by the washmonitor agent
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080/api/v1
+paths:
+  /setAgentStatus:
+    post:
+      summary: Set the status of the agent to either 'monitor' or 'idle'
+      description: This endpoint allows the user to set the status of the agent to either 'monitor' or 'idle'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  description: The status to set the agent to
+                  example: "monitor"
+
+      responses:
+        '200':
+          description: The status of the agent has been set
+        '400':
+          description: The request was malformed
+        '500':
+          description: An error occurred while setting the agent status
+  /getAgentStatus:
+    get:
+      summary: Get the status of the agent
+      description: This endpoint allows the user to get the status of the agent
+      responses:
+        '200':
+          description: The status of the agent has been retrieved
+        '500':
+          description: An error occurred while getting the agent status
