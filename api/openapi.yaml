@@ -4,7 +4,7 @@ info:
   description: This is the API served by the washmonitor agent
   version: 1.0.0
 servers:
-  - url: http://localhost:8080/api/v1
+  - url: http://localhost:8001
 paths:
   /setAgentStatus:
     post:
@@ -21,12 +21,30 @@ paths:
                   type: string
                   description: The status to set the agent to
                   example: "monitor"
-
       responses:
         '200':
           description: The status of the agent has been set
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Agent status set successfully
+                  status:
+                    type: string
+                    example: monitor
         '400':
           description: The request was malformed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Malformed request
         '500':
           description: An error occurred while setting the agent status
   /getAgentStatus:
@@ -36,5 +54,13 @@ paths:
       responses:
         '200':
           description: The status of the agent has been retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: idle
         '500':
           description: An error occurred while getting the agent status
