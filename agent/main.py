@@ -93,6 +93,9 @@ if __name__ == "__main__":
                 print("Washing machine is stopped for 5 checks. Setting agent status to idle.")
                 setAgentStatus(AgentStatus.IDLE)
                 washerStoppedCount = 0
+
+                # Notify the user
+                requests.post(os.environ.get('DISCORD_URL'), data={"message": "✅ Washing machine has finished running"})
             else:
                 print(f"Washing machine is {washerStatus}. Agent status remains as monitor.")
                 agentStatus = setAgentStatus(AgentStatus.MONITOR)

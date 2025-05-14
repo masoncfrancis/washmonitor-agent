@@ -17,7 +17,8 @@ services:
     container_name: washmonitor-agent
     environment:
       - API_URL=http://api:8001
-      - WASHER_CAMERA_URL=http://your_camara_url
+      - WASHER_CAMERA_URL=http://your_camera_url
+      - DISCORD_URL=https://your_discord_webhook_url
     depends_on:
       - api
     restart: unless-stopped
