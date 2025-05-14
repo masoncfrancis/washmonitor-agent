@@ -24,16 +24,14 @@ washerStoppedCount = 0  # Counter for stopped washing machine
 agentStatus = AgentStatus.IDLE.value  # Use Enum value
 
 def setAgentStatus(status: AgentStatus):
-    requests.post(apiURL + "/setAgentStatus", data={"status": status})
+    requests.post(apiURL + "/setAgentStatus", data={"status": status.value})
     return status.value
 
 
 def getAgentStatus():
-    return AgentStatus.MONITOR.value # placeholder
-    # TODO query API to get the actual value
+    return requests.get(apiURL + "/getAgentStatus").json()["status"]
 
 
-# TODO I have decided to make this program just an agent, and the API will be served by a Go program
 def getWashingMachineStatus():
 
     if agentStatus == AgentStatus.MONITOR.value:
@@ -50,7 +48,12 @@ def getWashingMachineStatus():
             imgProc.deleteImage(washerImageFilePath)  # Delete the original image because we don't need it anymore
             classification = mlProc.classifyControlPanel(result["imagePath"])
             print("Classification result:", classification)
-
+            if classification == WasherStatus.STOPPED.value:
+                print("Washing machine is stopped")
+                return WasherStatus.STOPPED.value
+            elif classification == WasherStatus.RUNNING.value:
+                print("Washing machine is running")
+                return WasherStatus.RUNNING.value
         else:
             imgProc.deleteImage(washerImageFilePath)
             print("Control panel not detected")
@@ -65,11 +68,11 @@ if __name__ == "__main__":
 
     apiURL = os.environ.get('API_URL')
 
-    last_washer_check = 0
-    last_agent_check = 0
+    last_washer_check = time.monotonic()
+    last_agent_check = time.monotonic()
 
     while True:
-        now = time.time()
+        now = time.monotonic()
 
         # Check agent status every 5 seconds, always
         if now - last_agent_check >= 5:
@@ -87,14 +90,17 @@ if __name__ == "__main__":
 
             if washerStoppedCount >= 5:
                 agentStatus = setAgentStatus(AgentStatus.IDLE)
-                print("Washing machine is stopped. Setting agent status to idle.")
+                print("Washing machine is stopped for 5 checks. Setting agent status to idle.")
+                setAgentStatus(AgentStatus.IDLE)
                 washerStoppedCount = 0
-
             else:
-                print("Washing machine is running. Agent status remains as monitor.")
+                print(f"Washing machine is {washerStatus}. Agent status remains as monitor.")
                 agentStatus = setAgentStatus(AgentStatus.MONITOR)
-
 
             last_washer_check = now
 
-        time.sleep(1)  # Prevent busy-waiting
+        # Dormir hasta el siguiente evento programado
+        next_agent = last_agent_check + 5
+        next_washer = last_washer_check + 60 if agentStatus == AgentStatus.MONITOR.value else float('inf')
+        sleep_time = max(0, min(next_agent, next_washer) - time.monotonic())
+        time.sleep(sleep_time)

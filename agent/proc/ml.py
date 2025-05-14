@@ -24,13 +24,15 @@ def cropToControlPanel(imagePath):
     status = False
     croppedImagePath = imagePath
 
+    # Load the YOLO model for control panel detection
+    print("Loading YOLO model for control panel detection...")
     model = YOLO("models/detect.pt")  # Load the YOLO model
 
-    result = model(imagePath)  # Perform inference on the image
+    print("Performing inference on the image...")
+    result = model(imagePath)[0]  # Perform inference on the image
     if len(result[0].boxes) == 1:  # Check if 1 box is detected
 
         status = True  # Set status to true if a control panel is detected
-
         boxCoords = json.loads(result.to_json())[0]["box"]
         x1 = boxCoords["x1"]
         y1 = boxCoords["y1"]
@@ -75,7 +77,7 @@ def classifyControlPanel(imagePath):
     """
 
     model = YOLO("models/classify.pt")  # Load the classification model
-    result = model(imagePath)  # Perform inference on the image
+    result = model(imagePath)[0]  # Perform inference on the image
 
     # Get the class name from the result
     summary = result.summary()
