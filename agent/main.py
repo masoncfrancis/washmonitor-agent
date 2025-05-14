@@ -20,7 +20,7 @@ class WasherStatus(Enum):
 
 
 # Global vars
-washerStoppedCount = 0  # Counter for stopped washing machine
+washerStoppedCount = 4  # Counter for stopped washing machine
 agentStatus = AgentStatus.IDLE.value  # Use Enum value
 
 def setAgentStatus(status: AgentStatus):
@@ -95,7 +95,10 @@ if __name__ == "__main__":
                 washerStoppedCount = 0
 
                 # Notify the user
-                requests.post(os.environ.get('DISCORD_URL'), data={"message": "✅ Washing machine has finished running"})
+                requests.post(
+                    os.environ.get('DISCORD_URL'),
+                    json={"content": "✅ Washing machine has finished running"}
+                )
             else:
                 print(f"Washing machine is {washerStatus}. Agent status remains as monitor.")
                 agentStatus = setAgentStatus(AgentStatus.MONITOR)
