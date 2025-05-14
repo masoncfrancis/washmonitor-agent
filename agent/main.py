@@ -1,3 +1,4 @@
+import requests
 from dotenv import load_dotenv
 from enum import Enum  # Import Enum for status validation
 import proc.img as imgProc  # Import the image processing module
@@ -23,8 +24,8 @@ washerStoppedCount = 0  # Counter for stopped washing machine
 agentStatus = AgentStatus.IDLE.value  # Use Enum value
 
 def setAgentStatus(status: AgentStatus):
-    # TODO query API to set the status
-   return status.value
+    requests.post(apiURL + "/setAgentStatus", data={"status": status})
+    return status.value
 
 
 def getAgentStatus():
@@ -34,7 +35,6 @@ def getAgentStatus():
 
 # TODO I have decided to make this program just an agent, and the API will be served by a Go program
 def getWashingMachineStatus():
-    global washerStoppedCount  # Declare the global variable
 
     if agentStatus == AgentStatus.MONITOR.value:
 
@@ -51,13 +51,17 @@ def getWashingMachineStatus():
             pass  # Placeholder for actual processing logic
         else:
             imgProc.deleteImage(washerImageFilePath)
-            print("Control panel not detected. Incrementing stopped count.")
+            print("Control panel not detected")
             return WasherStatus.STOPPED.value
+
+    return WasherStatus.STOPPED.value  # Default to stopped
         
 
 if __name__ == "__main__":
 
     load_dotenv()
+
+    apiURL = os.environ.get('API_URL')
 
     last_washer_check = 0
     last_agent_check = 0
@@ -83,6 +87,11 @@ if __name__ == "__main__":
                 agentStatus = setAgentStatus(AgentStatus.IDLE)
                 print("Washing machine is stopped. Setting agent status to idle.")
                 washerStoppedCount = 0
+
+            else:
+                print("Washing machine is running. Agent status remains as monitor.")
+                agentStatus = setAgentStatus(AgentStatus.MONITOR)
+
 
             last_washer_check = now
 
