@@ -62,3 +62,24 @@ def cropToControlPanel(imagePath):
         "imagePath": croppedImagePath,
         "status": status
     }
+
+def classifyControlPanel(imagePath):
+    """
+    Classifies the control panel image and returns the classification result.
+
+    Args:
+        imagePath (str): The path to the image file.
+
+    Returns:
+        str: The classification result.
+    """
+
+    model = YOLO("models/classify.pt")  # Load the classification model
+    result = model(imagePath)  # Perform inference on the image
+
+    # Get the class name from the result
+    summary = result.summary()
+    className = summary[0]['name']
+
+
+    return className

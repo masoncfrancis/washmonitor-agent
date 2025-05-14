@@ -48,7 +48,9 @@ def getWashingMachineStatus():
         if result["status"] == True:
             print("Control panel detected")
             imgProc.deleteImage(washerImageFilePath)  # Delete the original image because we don't need it anymore
-            pass  # Placeholder for actual processing logic
+            classification = mlProc.classifyControlPanel(result["imagePath"])
+            print("Classification result:", classification)
+
         else:
             imgProc.deleteImage(washerImageFilePath)
             print("Control panel not detected")

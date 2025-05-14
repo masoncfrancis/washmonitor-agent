@@ -1,0 +1,23 @@
+services:
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: washmonitor-api
+    ports:
+      - "8001:8001"
+    environment:
+      - API_ENV=production
+    restart: unless-stopped
+
+  agent:
+    build:
+      context: ./agent
+      dockerfile: Dockerfile
+    container_name: washmonitor-agent
+    environment:
+      - API_URL=http://api:8001
+      - WASHER_CAMERA_URL=http://your_camara_url
+    depends_on:
+      - api
+    restart: unless-stopped
