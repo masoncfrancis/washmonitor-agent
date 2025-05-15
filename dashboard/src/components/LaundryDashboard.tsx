@@ -56,7 +56,7 @@ const LaundryDashboard = () => {
                 )}
                 {masonActive && !brenActive && (
                     <div
-                        class="flex-1 flex flex-col justify-center items-center text-4xl cursor-pointer text-center break-words bg-purple-500 text-white h-full w-full"
+                        className="flex-1 flex flex-col justify-center items-center text-4xl cursor-pointer text-center break-words bg-purple-500 text-white h-full w-full"
                         onClick={() => handleButtonClick('mason')}
                     >
                         Mason is using the washer
