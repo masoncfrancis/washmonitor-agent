@@ -3,25 +3,26 @@ FROM node:alpine AS builder
 
 WORKDIR /app
 
-COPY package*.json ./
+COPY package*.json .
 RUN npm ci
 
 COPY . .
 
+EXPOSE 3000
+
 RUN npm run build
 
-# --- Nginx Stage ---
-FROM nginx:alpine
+CMD ["npm", "start"]
 
-# Remove default nginx static assets
-RUN rm -rf /usr/share/nginx/html/*
-
-# Copy exported static site from build stage
-COPY --from=builder /app/out /usr/share/nginx/html
-
-# Copy custom nginx config (optional)
-# COPY nginx.conf /etc/nginx/nginx.conf
-
-EXPOSE 8002
-
-CMD ["nginx", "-g", "daemon off;"]
+## --- Nginx Stage ---
+#FROM nginx:alpine
+#
+## Copy exported static site from build stage
+#COPY --from=builder /app/out /usr/share/nginx/html
+#
+## Copy custom nginx config
+#COPY nginx.conf /etc/nginx/nginx.conf
+#
+#EXPOSE 8002
+#
+#CMD ["nginx", "-g", "daemon off;"]

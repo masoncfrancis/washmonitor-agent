@@ -28,7 +28,7 @@ services:
       dockerfile: Dockerfile
     container_name: washmonitor-dashboard
     ports:
-      - "8002:8002"
+      - "3000:3000"
     environment:
       - API_URL=http://api:8001
     depends_on:
