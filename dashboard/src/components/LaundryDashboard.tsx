@@ -32,7 +32,7 @@ const LaundryDashboard = () => {
                 className={`flex-1 flex flex-col justify-center items-center text-4xl cursor-pointer text-center break-words ${washerActive ? 'bg-green-500 text-white' : 'bg-green-500 text-white'}`}
                 onClick={() => handleButtonClick('washer')}
             >
-                {washerActive ? 'We\'ll let you know when the Washer is done' : 'Tap after starting Washer'}
+                {washerActive ? 'We\'ll let you know when the Washer is done' : 'Tap here after starting the Washer'}
                 {washerActive && <div className="loader mt-4"></div>}
             </div>
 
