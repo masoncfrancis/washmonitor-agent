@@ -3,6 +3,8 @@ FROM node:alpine AS builder
 
 WORKDIR /app
 
+ARG NODE_ENV=production
+
 COPY . .
 RUN npm i
 

@@ -1,9 +1,44 @@
-import {useState} from 'react';
+'use client';
+
+import { useState, useEffect } from 'react';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const LaundryDashboard = () => {
     const [brenActive, setBrenActive] = useState(false);
     const [masonActive, setMasonActive] = useState(false);
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        const fetchStatus = async () => {
+            try {
+                const res = await fetch(`${API_URL}/getAgentStatus`);
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.status === 'monitor' && data.user) {
+                    if (data.user.toLowerCase() === 'bren') {
+                        setBrenActive(true);
+                        setMasonActive(false);
+                    } else if (data.user.toLowerCase() === 'mason') {
+                        setMasonActive(true);
+                        setBrenActive(false);
+                    } else {
+                        setBrenActive(false);
+                        setMasonActive(false);
+                    }
+                } else if (data.status === 'idle') {
+                    setBrenActive(false);
+                    setMasonActive(false);
+                }
+            } catch (e) {
+                console.log('Error fetching status:', e);
+            }
+        };
+
+        fetchStatus();
+        const interval = setInterval(fetchStatus, 5000);
+        return () => clearInterval(interval);
+    }, []);
 
     const handleButtonClick = (person: 'bren' | 'mason') => {
         setLoading(true);
