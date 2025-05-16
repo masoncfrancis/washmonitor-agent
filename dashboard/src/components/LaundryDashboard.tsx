@@ -40,19 +40,35 @@ const LaundryDashboard = () => {
         return () => clearInterval(interval);
     }, []);
 
-    const handleButtonClick = (person: 'bren' | 'mason') => {
-        setLoading(true);
-        setTimeout(() => {
-            if (person === 'bren') {
-                setBrenActive(!brenActive);
-                if (masonActive) setMasonActive(false);
-            } else {
-                setMasonActive(!masonActive);
-                if (brenActive) setBrenActive(false);
-            }
-            setLoading(false);
-        }, 300);
-    };
+const handleButtonClick = async (person: 'bren' | 'mason') => {
+    setLoading(true);
+    const isActivating = person === 'bren' ? !brenActive : !masonActive;
+    const status = isActivating ? 'monitor' : 'idle';
+    const user = isActivating ? person : '';
+
+    try {
+        await fetch(`${API_URL}/setAgentStatus`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ status, user }),
+        });
+    } catch (e) {
+        console.log('Error setting status:', e);
+    }
+
+    setTimeout(() => {
+        if (person === 'bren') {
+            setBrenActive(!brenActive);
+            if (masonActive) setMasonActive(false);
+        } else {
+            setMasonActive(!masonActive);
+            if (brenActive) setBrenActive(false);
+        }
+        setLoading(false);
+    }, 300);
+};
 
     return (
         <div className="flex flex-col h-screen w-screen">
