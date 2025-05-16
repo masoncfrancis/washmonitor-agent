@@ -48,6 +48,7 @@ def getWashingMachineStatus():
             imgProc.deleteImage(washerImageFilePath)
             classification = mlProc.classifyControlPanel(result["imagePath"])
             print("Classification result:", classification)
+            imgProc.deleteImage(result["imagePath"])
             if classification == WasherStatus.STOPPED.value:
                 return WasherStatus.STOPPED.value
             elif classification == WasherStatus.RUNNING.value:
