@@ -39,7 +39,7 @@ def getWashingMachineStatus():
         try:
             washerImageFilePath = imgProc.getImage(os.environ.get('WASHER_CAMERA_URL'))
         except Exception as e:
-            print(f"Error al obtener la imagen: {e}")
+            print(f"Error getting the washer image: {e}")
             return WasherStatus.STOPPED.value  # O cualquier valor seguro
 
         result = mlProc.cropToControlPanel(washerImageFilePath)
