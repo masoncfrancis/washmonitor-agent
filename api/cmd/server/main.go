@@ -2,6 +2,7 @@ package main
 
 import (
     "github.com/gofiber/fiber/v2"
+    "github.com/gofiber/fiber/v2/middleware/cors"
 )
 
 type AgentState struct {
@@ -16,6 +17,11 @@ var agentState = AgentState{
 
 func main() {
     app := fiber.New()
+
+    // Permitir CORS para todos los orígenes
+    app.Use(cors.New(cors.Config{
+        AllowOrigins: "*",
+    }))
 
     app.Post("/setAgentStatus", func(c *fiber.Ctx) error {
         var body AgentState
