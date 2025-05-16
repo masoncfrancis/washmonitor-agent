@@ -3,10 +3,8 @@ FROM node:alpine AS builder
 
 WORKDIR /app
 
-COPY package*.json .
-RUN npm ci
-
 COPY . .
+RUN npm i
 
 EXPOSE 3000
 

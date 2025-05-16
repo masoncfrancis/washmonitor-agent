@@ -33,26 +33,24 @@ def getAgentStatus():
 
 
 def getWashingMachineStatus():
-
     if agentStatus == AgentStatus.MONITOR.value:
-
         print("Checking washing machine status...")
 
-        # Get the image of the washing machine
-        washerImageFilePath = imgProc.getImage(os.environ.get('WASHER_CAMERA_URL'))
+        try:
+            washerImageFilePath = imgProc.getImage(os.environ.get('WASHER_CAMERA_URL'))
+        except Exception as e:
+            print(f"Error al obtener la imagen: {e}")
+            return WasherStatus.STOPPED.value  # O cualquier valor seguro
 
-        # Determine if the image contains a control panel
         result = mlProc.cropToControlPanel(washerImageFilePath)
         if result["status"] == True:
             print("Control panel detected")
-            imgProc.deleteImage(washerImageFilePath)  # Delete the original image because we don't need it anymore
+            imgProc.deleteImage(washerImageFilePath)
             classification = mlProc.classifyControlPanel(result["imagePath"])
             print("Classification result:", classification)
             if classification == WasherStatus.STOPPED.value:
-                print("Washing machine is stopped")
                 return WasherStatus.STOPPED.value
             elif classification == WasherStatus.RUNNING.value:
-                print("Washing machine is running")
                 return WasherStatus.RUNNING.value
         else:
             imgProc.deleteImage(washerImageFilePath)
