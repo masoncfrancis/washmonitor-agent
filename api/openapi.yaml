@@ -15,12 +15,27 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                status:
-                  type: string
-                  description: The status to set the agent to
-                  example: "monitor"
+              oneOf:
+                - type: object
+                  required: [ status, user ]
+                  properties:
+                    status:
+                      type: string
+                      enum: [ monitor ]
+                      description: The status must be 'monitor'
+                    user:
+                      type: string
+                      description: The user currently using the washer
+                - type: object
+                  required: [ status ]
+                  properties:
+                    status:
+                      type: string
+                      enum: [ idle ]
+                      description: The status must be 'idle'
+                    user:
+                      type: string
+                      description: The user (optional if status is 'idle')
       responses:
         '200':
           description: The status of the agent has been set
@@ -62,5 +77,8 @@ paths:
                   status:
                     type: string
                     example: idle
+                  user:
+                    type: string
+                    example: Mason
         '500':
           description: An error occurred while getting the agent status

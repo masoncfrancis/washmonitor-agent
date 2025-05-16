@@ -23,8 +23,13 @@ class WasherStatus(Enum):
 washerStoppedCount = 4  # Counter for stopped washing machine
 agentStatus = AgentStatus.IDLE.value  # Use Enum value
 
-def setAgentStatus(status: AgentStatus):
-    requests.post(apiURL + "/setAgentStatus", data={"status": status.value})
+def setAgentStatus(status: AgentStatus, user: str = ""):
+    payload = {"status": status.value}
+    if status == AgentStatus.MONITOR:
+        if not user:
+            raise ValueError("User is required when status is 'monitor'")
+        payload["user"] = user
+    requests.post(apiURL + "/setAgentStatus", json=payload)
     return status.value
 
 
@@ -100,7 +105,6 @@ if __name__ == "__main__":
                 )
             else:
                 print(f"Washing machine is {washerStatus}. Agent status remains as monitor.")
-                agentStatus = setAgentStatus(AgentStatus.MONITOR)
 
             last_washer_check = now
 
