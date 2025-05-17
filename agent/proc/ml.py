@@ -30,8 +30,6 @@ def cropToControlPanel(imagePath):
 
     print("Performing inference on the image...")
     result = model(imagePath)[0]  # Perform inference on the image
-    print(len(result))
-    print(len(result[0].boxes))
     if len(result) != 0 or len(result[0].boxes) == 1:  # Check if 1 box is detected
 
         status = True  # Set status to true if a control panel is detected
