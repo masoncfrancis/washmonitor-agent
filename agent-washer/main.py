@@ -127,8 +127,11 @@ if __name__ == "__main__":
         if now - last_agent_check >= 5:
             try:
                 newStatus = getAgentStatus()
-                if newStatus == AgentStatus.IDLE.value and previousAgentStatus != AgentStatus.IDLE.value:
-                    print("Agent is idle.")
+                if (
+                    newStatus == AgentStatus.IDLE.value
+                    and previousAgentStatus != AgentStatus.IDLE.value
+                ):
+                    print("Agent transitioned to idle.")
                 previousAgentStatus = newStatus
                 agentStatus = newStatus
             except Exception as e:
@@ -168,6 +171,7 @@ if __name__ == "__main__":
 
                 # Set the agent status to idle
                 agentStatus = setAgentStatus(AgentStatus.IDLE)
+                print("Agent transitioned to idle due to washer stopped state.")
                 washerStoppedCount = 0
 
                 # Notify the user
