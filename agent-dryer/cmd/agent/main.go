@@ -60,6 +60,7 @@ var (
 	lastStationaryState    bool
 	lastFailedCheckinPrint time.Time
 	lastFailedCheckinMutex sync.Mutex
+	previousAgentStatus    string
 )
 
 type StateSubmission struct {
@@ -131,6 +132,10 @@ func main() {
 			return
 		}
 		log.Printf("Agent status: %s", agentStatus.Status)
+		if agentStatus.Status == "idle" && previousAgentStatus != "idle" {
+			log.Println("Agent transitioned to idle.")
+		}
+		previousAgentStatus = agentStatus.Status
 
 		// Send a heartbeat/check-in to the API so server records last-seen
 		go func() {
