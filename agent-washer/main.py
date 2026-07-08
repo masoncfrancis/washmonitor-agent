@@ -118,6 +118,7 @@ if __name__ == "__main__":
     last_washer_check = time.monotonic()
     last_agent_check = time.monotonic()
     last_checkin_fail_print = 0.0
+    previousAgentStatus = None
 
     while True:
         now = time.monotonic()
@@ -125,7 +126,11 @@ if __name__ == "__main__":
         # Check agent status every 5 seconds, always
         if now - last_agent_check >= 5:
             try:
-                agentStatus = getAgentStatus()
+                newStatus = getAgentStatus()
+                if newStatus == AgentStatus.IDLE.value and previousAgentStatus != AgentStatus.IDLE.value:
+                    print("Agent is idle.")
+                previousAgentStatus = newStatus
+                agentStatus = newStatus
             except Exception as e:
                 print(f"Error polling agent status: {e}")
             # Send a heartbeat/check-in to the API so server records last-seen
