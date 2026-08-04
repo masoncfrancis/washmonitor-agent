@@ -10,7 +10,7 @@ export default defineConfig({
     react(),
     babel({ presets: [reactCompilerPreset()] }),
     legacy({
-      targets: ["chrome >= 46", "android >= 5", "not IE 11"],
+      targets: ["chrome >= 106", "android >= 6", "not IE 11"],
     }),
   ],
   resolve: {
