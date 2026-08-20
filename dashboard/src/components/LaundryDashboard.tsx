@@ -5,6 +5,9 @@ const API_URL = (import.meta.env.VITE_API_URL as string) || "";
 type User = { id: number; name: string; color: string };
 type Appliance = "washer" | "dryer";
 
+const isAbortError = (e: unknown) =>
+  e instanceof DOMException && e.name === "AbortError";
+
 const LaundryDashboard = () => {
   const [washerUser, setWasherUser] = useState<number | null>(null);
   const [dryerUser, setDryerUser] = useState<number | null>(null);
@@ -12,8 +15,15 @@ const LaundryDashboard = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [userNamesError, setUserNamesError] = useState(false);
   const [apiHealthy, setApiHealthy] = useState(true);
+  const [now, setNow] = useState(0);
   const [washerOnline, setWasherOnline] = useState<boolean | null>(null);
   const [dryerOnline, setDryerOnline] = useState<boolean | null>(null);
+  const [washerSensorOnline, setWasherSensorOnline] = useState<boolean | null>(
+    null,
+  );
+  const [dryerSensorOnline, setDryerSensorOnline] = useState<boolean | null>(
+    null,
+  );
   const [washerLastSeen, setWasherLastSeen] = useState<string | null>(null);
   const [dryerLastSeen, setDryerLastSeen] = useState<string | null>(null);
 
@@ -25,12 +35,14 @@ const LaundryDashboard = () => {
   const mountedRef = useRef(false);
   const controllersRef = useRef<AbortController[]>([]);
   const timeoutsRef = useRef<number[]>([]);
+  const healthFailCountRef = useRef(0);
+  const HEALTH_FAIL_LIMIT = 2;
 
   const formatRelativeTime = (iso: string | null) => {
     if (!iso) return "";
     const then = new Date(iso).getTime();
     if (Number.isNaN(then)) return "";
-    const diff = Date.now() - then;
+    const diff = now - then;
     if (diff < 0) return "just now";
     const seconds = Math.floor(diff / 1000);
     if (seconds < 10) return "just now";
@@ -99,6 +111,7 @@ const LaundryDashboard = () => {
     };
 
     const fetchStatus = async () => {
+      setNow(Date.now());
       const controller = new AbortController();
       controllersRef.current.push(controller);
       try {
@@ -111,8 +124,6 @@ const LaundryDashboard = () => {
           }),
         ]);
         if (!mountedRef.current) return;
-
-        setApiHealthy(washerRes.ok && dryerRes.ok);
 
         if (washerRes.ok) {
           const washerData = await washerRes.json();
@@ -140,30 +151,44 @@ const LaundryDashboard = () => {
           });
           if (!mountedRef.current) return;
           if (healthRes.ok) {
+            healthFailCountRef.current = 0;
             const health = await healthRes.json();
-            if (health?.api && typeof health.api.healthy === "boolean") {
-              setApiHealthy(health.api.healthy);
-            }
+            setApiHealthy(true);
             if (health?.washer) {
               setWasherOnline(Boolean(health.washer.online));
               setWasherLastSeen(health.washer.lastSeen || null);
+              const ws = health.washer.sensor;
+              setWasherSensorOnline(
+                ws?.online === undefined
+                  ? null
+                  : Boolean(ws.online && ws.ok),
+              );
             }
             if (health?.dryer) {
               setDryerOnline(Boolean(health.dryer.online));
               setDryerLastSeen(health.dryer.lastSeen || null);
+              const ds = health.dryer.sensor;
+              setDryerSensorOnline(
+                ds?.online === undefined ? null : Boolean(ds.online && ds.ok),
+              );
             }
           } else {
+            healthFailCountRef.current += 1;
+            if (healthFailCountRef.current >= HEALTH_FAIL_LIMIT) {
+              setApiHealthy(false);
+            }
+          }
+        } catch (e: unknown) {
+          if (isAbortError(e)) return;
+          console.log("Error fetching health:", e);
+          healthFailCountRef.current += 1;
+          if (healthFailCountRef.current >= HEALTH_FAIL_LIMIT) {
             setApiHealthy(false);
           }
-        } catch (e: any) {
-          if (e?.name === "AbortError") return;
-          console.log("Error fetching health:", e);
-          setApiHealthy(false);
         }
-      } catch (e: any) {
-        if (e?.name === "AbortError") return;
+      } catch (e: unknown) {
+        if (isAbortError(e)) return;
         console.log("Error fetching status:", e);
-        setApiHealthy(false);
       } finally {
         controllersRef.current = controllersRef.current.filter(
           (c) => c !== controller,
@@ -181,7 +206,6 @@ const LaundryDashboard = () => {
         if (!mountedRef.current) return;
 
         if (!res.ok) {
-          setApiHealthy(false);
           setUserNamesError(true);
           setUsers([]);
           return;
@@ -197,12 +221,10 @@ const LaundryDashboard = () => {
           return;
         }
 
-        setApiHealthy(true);
         setUserNamesError(false);
         setUsers(parsed);
-      } catch (e: any) {
-        if (e?.name === "AbortError") return;
-        setApiHealthy(false);
+      } catch (e: unknown) {
+        if (isAbortError(e)) return;
         setUserNamesError(true);
         setUsers([]);
         console.log("Error fetching user names:", e);
@@ -236,8 +258,8 @@ const LaundryDashboard = () => {
         { status: "monitor", user: String(userId) },
         controller,
       );
-    } catch (e: any) {
-      if (e?.name !== "AbortError") {
+    } catch (e: unknown) {
+      if (!isAbortError(e)) {
         console.log("Error setting status:", e);
       }
     } finally {
@@ -263,8 +285,8 @@ const LaundryDashboard = () => {
       const controller = new AbortController();
       controllersRef.current.push(controller);
       postAgentStatus(appliance, { status: "idle" }, controller)
-        .catch((e: any) => {
-          if (e?.name === "AbortError") return;
+        .catch((e: unknown) => {
+          if (isAbortError(e)) return;
           console.log("Error setting status:", e);
         })
         .finally(() => {
@@ -299,16 +321,22 @@ const LaundryDashboard = () => {
         if (washerOnline === false) {
           issues.push(
             washerLastSeen
-              ? `Washer Sensor Offline (${formatRelativeTime(washerLastSeen)})`
-              : "Washer Sensor Offline",
+              ? `Washer Agent Offline (${formatRelativeTime(washerLastSeen)})`
+              : "Washer Agent Offline",
           );
+        }
+        if (washerSensorOnline === false) {
+          issues.push("Washer Sensor Offline");
         }
         if (dryerOnline === false) {
           issues.push(
             dryerLastSeen
-              ? `Dryer Sensor Offline (${formatRelativeTime(dryerLastSeen)})`
-              : "Dryer Sensor Offline",
+              ? `Dryer Agent Offline (${formatRelativeTime(dryerLastSeen)})`
+              : "Dryer Agent Offline",
           );
+        }
+        if (dryerSensorOnline === false) {
+          issues.push("Dryer Sensor Offline");
         }
         if (issues.length === 0) return null;
         return <div className="error-banner">{issues.join(" • ")}</div>;

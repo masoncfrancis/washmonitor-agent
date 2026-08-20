@@ -61,6 +61,7 @@ var (
 	lastFailedCheckinPrint time.Time
 	lastFailedCheckinMutex sync.Mutex
 	previousAgentStatus    string
+	lastStateSubmission    time.Time
 )
 
 type StateSubmission struct {
@@ -109,6 +110,7 @@ func main() {
 		}
 		stateMutex.Lock()
 		stateHistory = append(stateHistory, StateSubmission{State: req.State, Timestamp: time.Now()})
+		lastStateSubmission = time.Now()
 		stateMutex.Unlock()
 		return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": "State submitted"})
 	})
@@ -139,7 +141,15 @@ func main() {
 
 		// Send a heartbeat/check-in to the API so server records last-seen
 		go func() {
-			resp, err := http.Post(API_SERVER_URL+"/dryer/checkin", "application/json", bytes.NewBuffer([]byte("{}")))
+			stateMutex.Lock()
+			sensorOk := time.Since(lastStateSubmission) <= 60*time.Second
+			stateMutex.Unlock()
+			checkinPayload, err := json.Marshal(map[string]bool{"sensorOk": sensorOk})
+			if err != nil {
+				log.Printf("Failed to marshal check-in payload: %v", err)
+				return
+			}
+			resp, err := http.Post(API_SERVER_URL+"/dryer/checkin", "application/json", bytes.NewBuffer(checkinPayload))
 			if err != nil {
 				// print at most every 30s to avoid flooding logs
 				lastFailedCheckinMutex.Lock()

@@ -53,6 +53,18 @@ def getAgentStatus():
     return requests.get(apiURL + "/washer/getAgentStatus").json()["status"]
 
 
+def cameraOnline():
+    """Check if the washer camera feed is reachable without downloading the body."""
+    try:
+        r = requests.get(
+            os.environ.get("WASHER_CAMERA_URL"), stream=True, timeout=5
+        )
+        r.close()
+        return r.ok
+    except Exception:
+        return False
+
+
 def getAgentUser():
     return requests.get(apiURL + "/washer/getAgentStatus").json()["user"]
 
@@ -138,7 +150,11 @@ if __name__ == "__main__":
                 print(f"Error polling agent status: {e}")
             # Send a heartbeat/check-in to the API so server records last-seen
             try:
-                requests.post(apiURL + "/washer/checkin", timeout=2)
+                requests.post(
+                    apiURL + "/washer/checkin",
+                    json={"sensorOk": cameraOnline()},
+                    timeout=2,
+                )
             except Exception as e:
                 now_mon = time.monotonic()
                 # print an error at most every 30 seconds

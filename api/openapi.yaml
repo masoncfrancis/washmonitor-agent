@@ -93,10 +93,25 @@ paths:
   /washer/checkin:
     post:
       summary: Agent heartbeat for washer
-      description: Used by the washer agent to announce it's alive. Updates last-seen timestamp.
+      description: Used by the washer agent to announce it's alive. Updates last-seen timestamp and sensor status.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sensorOk]
+              properties:
+                sensorOk:
+                  type: boolean
+                  description: Whether the washer camera feed is reachable
+              example:
+                sensorOk: true
       responses:
         "200":
           description: Check-in received
+        "400":
+          description: Malformed request, missing sensorOk
         "500":
           description: Server error
   /dryer/setAgentStatus:
@@ -186,10 +201,25 @@ paths:
   /dryer/checkin:
     post:
       summary: Agent heartbeat for dryer
-      description: Used by the dryer agent to announce it's alive. Updates last-seen timestamp.
+      description: Used by the dryer agent to announce it's alive. Updates last-seen timestamp and sensor status.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sensorOk]
+              properties:
+                sensorOk:
+                  type: boolean
+                  description: Whether the vibration sensor has submitted state recently
+              example:
+                sensorOk: true
       responses:
         "200":
           description: Check-in received
+        "400":
+          description: Malformed request, missing sensorOk
         "500":
           description: Server error
   /users/names:
@@ -243,6 +273,21 @@ paths:
                         type: string
                         format: date-time
                         example: "2026-03-17T12:34:56Z"
+                      sensor:
+                        type: object
+                        properties:
+                          online:
+                            type: boolean
+                            description: Whether the sensor is reporting within the offline threshold
+                            example: true
+                          ok:
+                            type: boolean
+                            description: Last reported sensor health from the agent
+                            example: true
+                          lastSeen:
+                            type: string
+                            format: date-time
+                            example: "2026-03-17T12:34:56Z"
                   dryer:
                     type: object
                     properties:
@@ -253,6 +298,21 @@ paths:
                         type: string
                         format: date-time
                         example: "2026-03-17T12:34:00Z"
+                      sensor:
+                        type: object
+                        properties:
+                          online:
+                            type: boolean
+                            description: Whether the sensor is reporting within the offline threshold
+                            example: true
+                          ok:
+                            type: boolean
+                            description: Last reported sensor health from the agent
+                            example: true
+                          lastSeen:
+                            type: string
+                            format: date-time
+                            example: "2026-03-17T12:34:00Z"
 
 components:
   schemas:

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 	"strconv"
 	"sync"
 	"time"
@@ -28,9 +29,14 @@ var dryerAgentState = AgentState{
 	User:   "",
 }
 var (
-	washerLastSeen time.Time
-	dryerLastSeen  time.Time
-	agentMutex     sync.Mutex
+	washerLastSeen        time.Time
+	dryerLastSeen         time.Time
+	washerSensorOk        bool
+	washerSensorLastSeen  time.Time
+	dryerSensorOk         bool
+	dryerSensorLastSeen   time.Time
+	agentMutex            sync.Mutex
+	offlineThreshold      = 30 * time.Second
 )
 
 func main() {
@@ -47,6 +53,16 @@ func main() {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
+	// Allow overriding the agent offline threshold via env (seconds)
+	if secondsStr := os.Getenv("OFFLINE_THRESHOLD_SECONDS"); secondsStr != "" {
+		if seconds, err := strconv.Atoi(secondsStr); err == nil && seconds > 0 {
+			offlineThreshold = time.Duration(seconds) * time.Second
+		} else {
+			log.Printf("Invalid OFFLINE_THRESHOLD_SECONDS %q, using default", secondsStr)
+		}
+	}
+	log.Printf("Agent offline threshold: %v", offlineThreshold)
+
 	app := fiber.New()
 
 	// Permitir CORS para todos los orígenes
@@ -56,28 +72,42 @@ func main() {
 
 	// Endpoint de health check
 	app.Get("/health", func(c *fiber.Ctx) error {
-		// Determine online status: offline if last seen > 7 minutes
+		// Determine online status: offline if last seen > offlineThreshold
 		agentMutex.Lock()
 		ws := washerLastSeen
 		ds := dryerLastSeen
+		wso := washerSensorOk
+		wsl := washerSensorLastSeen
+		dso := dryerSensorOk
+		dsl := dryerSensorLastSeen
 		agentMutex.Unlock()
 
-		sevenMin := 4 * time.Minute
 		washerOnline := false
 		dryerOnline := false
 		var washerLast string
 		var dryerLast string
 		if !ws.IsZero() {
 			washerLast = ws.UTC().Format(time.RFC3339)
-			if time.Since(ws) <= sevenMin {
+			if time.Since(ws) <= offlineThreshold {
 				washerOnline = true
 			}
 		}
 		if !ds.IsZero() {
 			dryerLast = ds.UTC().Format(time.RFC3339)
-			if time.Since(ds) <= sevenMin {
+			if time.Since(ds) <= offlineThreshold {
 				dryerOnline = true
 			}
+		}
+
+		washerSensorOnline := !wsl.IsZero() && time.Since(wsl) <= offlineThreshold
+		dryerSensorOnline := !dsl.IsZero() && time.Since(dsl) <= offlineThreshold
+		var washerSensorLast string
+		var dryerSensorLast string
+		if !wsl.IsZero() {
+			washerSensorLast = wsl.UTC().Format(time.RFC3339)
+		}
+		if !dsl.IsZero() {
+			dryerSensorLast = dsl.UTC().Format(time.RFC3339)
 		}
 
 		return c.Status(fiber.StatusOK).JSON(fiber.Map{
@@ -87,10 +117,20 @@ func main() {
 			"washer": fiber.Map{
 				"online":   washerOnline,
 				"lastSeen": washerLast,
+				"sensor": fiber.Map{
+					"online":   washerSensorOnline,
+					"ok":       wso,
+					"lastSeen": washerSensorLast,
+				},
 			},
 			"dryer": fiber.Map{
 				"online":   dryerOnline,
 				"lastSeen": dryerLast,
+				"sensor": fiber.Map{
+					"online":   dryerSensorOnline,
+					"ok":       dso,
+					"lastSeen": dryerSensorLast,
+				},
 			},
 		})
 	})
@@ -132,10 +172,6 @@ func main() {
 			washerAgentState.Status = "monitor"
 			washerAgentState.User = body.User
 		}
-		// Update last-seen timestamp when agent submits status
-		agentMutex.Lock()
-		washerLastSeen = time.Now()
-		agentMutex.Unlock()
 		return c.Status(fiber.StatusOK).JSON(fiber.Map{
 			"message": "Agent status set successfully",
 			"status":  washerAgentState.Status,
@@ -191,10 +227,6 @@ func main() {
 			dryerAgentState.Status = "monitor"
 			dryerAgentState.User = body.User
 		}
-		// Update last-seen timestamp when agent submits status
-		agentMutex.Lock()
-		dryerLastSeen = time.Now()
-		agentMutex.Unlock()
 		return c.Status(fiber.StatusOK).JSON(fiber.Map{
 			"message": "Agent status set successfully",
 			"status":  dryerAgentState.Status,
@@ -204,15 +236,35 @@ func main() {
 
 	// Top-level check-in endpoints for agents (heartbeats)
 	app.Post("/washer/checkin", func(c *fiber.Ctx) error {
+		var body struct {
+			SensorOk bool `json:"sensorOk"`
+		}
+		if err := c.BodyParser(&body); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "sensorOk required",
+			})
+		}
 		agentMutex.Lock()
 		washerLastSeen = time.Now()
+		washerSensorOk = body.SensorOk
+		washerSensorLastSeen = time.Now()
 		agentMutex.Unlock()
 		return c.SendStatus(fiber.StatusOK)
 	})
 
 	app.Post("/dryer/checkin", func(c *fiber.Ctx) error {
+		var body struct {
+			SensorOk bool `json:"sensorOk"`
+		}
+		if err := c.BodyParser(&body); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "sensorOk required",
+			})
+		}
 		agentMutex.Lock()
 		dryerLastSeen = time.Now()
+		dryerSensorOk = body.SensorOk
+		dryerSensorLastSeen = time.Now()
 		agentMutex.Unlock()
 		return c.SendStatus(fiber.StatusOK)
 	})
