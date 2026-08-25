@@ -1,3 +1,4 @@
+import logging
 import requests
 from dotenv import load_dotenv
 from enum import Enum  # Import Enum for status validation
@@ -25,6 +26,29 @@ class WasherStatus(Enum):
 washerStoppedCount = 0  # Counter for stopped washing machine
 agentStatus = AgentStatus.IDLE.value  # Use Enum value
 userPhoneMap = {}  # Map of user ID to phone number
+logger = logging.getLogger("washmonitor")
+
+
+def initGlitchTip():
+    """Initialize Sentry/GlitchTip using environment config and Python logging."""
+    dsn = os.environ.get("GLITCHTIP_DSN") or os.environ.get("SENTRY_DSN")
+    if not dsn:
+        logger.warning("No GlitchTip DSN configured. Skipping Sentry initialization.")
+        return None
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
+    sentry_sdk.init(
+        dsn=dsn,
+        traces_sample_rate=0.10,
+        auto_session_tracking=False,
+        enable_logs=True,
+        send_default_pii=True,
+    )
+    logger.info("GlitchTip initialized.")
+    return logger
 
 
 def loadConfig(configPath: str):
@@ -57,9 +81,7 @@ def getAgentStatus():
 def cameraOnline():
     """Check if the washer camera feed is reachable without downloading the body."""
     try:
-        r = requests.get(
-            os.environ.get("WASHER_CAMERA_URL"), stream=True, timeout=5
-        )
+        r = requests.get(os.environ.get("WASHER_CAMERA_URL"), stream=True, timeout=5)
         r.close()
         return r.ok
     except Exception:
@@ -121,17 +143,8 @@ def sendSmsMessage(message, destination):
 
 
 if __name__ == "__main__":
-
-
-
-    sentry_sdk.init(
-        dsn="https://6864713b3c6242d6af5592df59ad9298@glitchtip.masonfrancis.net/1",
-        traces_sample_rate=0.10,  # 1% of transactions — adjust to your needs
-        auto_session_tracking=False,  # GlitchTip does not support sessions
-        enable_logs=True,  # Opt-in: send logs to GlitchTip (uses disk space)
-    )
-
     load_dotenv()
+    logger = initGlitchTip() or logging.getLogger("washmonitor")
 
     apiURL = os.environ.get("API_URL")
 
