@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/joho/godotenv"
@@ -45,6 +46,23 @@ func main() {
 	if err != nil {
 		// Only log if the .env file is missing for info, not as an error
 		log.Println("No .env file found or error loading .env (this is fine if env vars are set elsewhere):", err)
+	}
+
+	if dsn := os.Getenv("GLITCHTIP_DSN"); dsn != "" {
+		err = sentry.Init(sentry.ClientOptions{
+			Dsn:              dsn,
+			Debug:            true,
+			SendDefaultPII:   true,
+			EnableTracing:    true,
+			TracesSampleRate: 1.0,
+		})
+		if err != nil {
+			log.Fatalf("sentry.Init: %s", err)
+		}
+		defer sentry.Flush(2 * time.Second)
+		log.Printf("Sentry initialized using GLITCHTIP_DSN")
+	} else {
+		log.Println("GLITCHTIP_DSN not set; Sentry disabled")
 	}
 
 	// Load config.json with user data

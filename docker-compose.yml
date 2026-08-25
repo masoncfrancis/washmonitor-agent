@@ -8,6 +8,7 @@ services:
       - "8001:8001"
     environment:
       - API_ENV=production
+      - GLITCHTIP_DSN=https://your_glitchtip_project_dsn_here
     volumes:
       - ./config:/config:ro
     restart: unless-stopped
