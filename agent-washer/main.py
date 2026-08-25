@@ -42,7 +42,7 @@ def initGlitchTip():
     )
     sentry_sdk.init(
         dsn=dsn,
-        traces_sample_rate=0.10,
+        traces_sample_rate=1.0,
         auto_session_tracking=False,
         enable_logs=True,
         send_default_pii=True,
