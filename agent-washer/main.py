@@ -126,9 +126,9 @@ if __name__ == "__main__":
 
     sentry_sdk.init(
         dsn="https://6864713b3c6242d6af5592df59ad9298@glitchtip.masonfrancis.net/1",
-        traces_sample_rate=0.01,  # 1% of transactions — adjust to your needs
+        traces_sample_rate=0.10,  # 1% of transactions — adjust to your needs
         auto_session_tracking=False,  # GlitchTip does not support sessions
-        # enable_logs=True,  # Opt-in: send logs to GlitchTip (uses disk space)
+        enable_logs=True,  # Opt-in: send logs to GlitchTip (uses disk space)
     )
 
     load_dotenv()
