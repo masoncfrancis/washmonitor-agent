@@ -7,7 +7,12 @@ import App from "./App.tsx";
 if (import.meta.env.VITE_SENTRY_DSN) {
   Sentry.init({
     dsn: import.meta.env.VITE_SENTRY_DSN,
-    integrations: [Sentry.browserTracingIntegration()],
+    integrations: [
+      Sentry.browserTracingIntegration(),
+      Sentry.captureConsoleIntegration({
+        levels: ['log', 'info', 'warn', 'error'],
+      }),
+    ],
     sendDefaultPii: true,
     tracesSampleRate: 1.0,
     enableLogs: true,

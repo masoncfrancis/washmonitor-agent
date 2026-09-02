@@ -3,10 +3,12 @@ module github.com/masoncfrancis/washmonitor-agent/api
 go 1.25.0
 
 require (
-	github.com/getsentry/sentry-go v0.48.0
+	github.com/getsentry/sentry-go v0.49.0
 	github.com/getsentry/sentry-go/fiber v0.48.0
+	github.com/getsentry/sentry-go/logrus v0.49.0
 	github.com/gofiber/fiber/v2 v2.52.14
 	github.com/joho/godotenv v1.5.1
+	github.com/sirupsen/logrus v1.10.2
 )
 
 require (
@@ -19,6 +21,6 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.71.0 // indirect
-	golang.org/x/sys v0.45.0 // indirect
-	golang.org/x/text v0.37.0 // indirect
+	golang.org/x/sys v0.46.0 // indirect
+	golang.org/x/text v0.39.0 // indirect
 )

@@ -10,10 +10,12 @@ import (
 
 	"github.com/getsentry/sentry-go"
 	sentryfiber "github.com/getsentry/sentry-go/fiber"
+	sentrylogrus "github.com/getsentry/sentry-go/logrus"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/joho/godotenv"
 	"github.com/masoncfrancis/washmonitor-agent/api/internal/userinfo"
+	logrus "github.com/sirupsen/logrus"
 )
 
 type AgentState struct {
@@ -60,8 +62,20 @@ func main() {
 		if err != nil {
 			log.Fatalf("sentry.Init: %s", err)
 		}
+		logger := logrus.New()
+		logger.SetFormatter(&logrus.JSONFormatter{})
+		logger.SetOutput(os.Stdout)
+		logger.SetLevel(logrus.InfoLevel)
+		hook, err := sentrylogrus.NewLogHook([]logrus.Level{logrus.InfoLevel, logrus.WarnLevel, logrus.ErrorLevel, logrus.FatalLevel, logrus.PanicLevel}, sentry.ClientOptions{})
+		if err != nil {
+			log.Printf("sentry log hook init failed: %v", err)
+		} else {
+			logger.AddHook(hook)
+		}
+		log.SetOutput(logger.Writer())
+		log.SetFlags(0)
 		defer sentry.Flush(2 * time.Second)
-		log.Printf("Sentry initialized using SENTRY_DSN")
+		logger.Info("Sentry initialized using SENTRY_DSN")
 	} else {
 		log.Println("SENTRY_DSN not set; Sentry disabled")
 	}

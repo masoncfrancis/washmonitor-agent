@@ -5,9 +5,11 @@ go 1.25.0
 require (
 	github.com/getsentry/sentry-go v0.49.0
 	github.com/getsentry/sentry-go/fiber v0.49.0
+	github.com/getsentry/sentry-go/logrus v0.49.0
 	github.com/gofiber/fiber/v2 v2.52.14
 	github.com/joho/godotenv v1.5.1
 	github.com/robfig/cron/v3 v3.0.1
+	github.com/sirupsen/logrus v1.10.2
 )
 
 require (
