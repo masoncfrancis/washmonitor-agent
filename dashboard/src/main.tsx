@@ -10,7 +10,7 @@ if (import.meta.env.VITE_SENTRY_DSN) {
     integrations: [
       Sentry.browserTracingIntegration(),
       Sentry.captureConsoleIntegration({
-        levels: ['log', 'info', 'warn', 'error'],
+        levels: ["log", "info", "warn", "error"],
       }),
     ],
     sendDefaultPii: true,

@@ -17,8 +17,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/joho/godotenv"
-	logrus "github.com/sirupsen/logrus"
 	"github.com/robfig/cron/v3"
+	logrus "github.com/sirupsen/logrus"
 )
 
 // StateSubmission holds a state and its timestamp
