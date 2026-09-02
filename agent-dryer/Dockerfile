@@ -10,8 +10,9 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o /agent ./cmd/agent
 
 # Stage 2: imagen final
-FROM scratch
+FROM alpine:3.20
 
+RUN apk add --no-cache ca-certificates
 COPY --from=builder /agent /agent
 
 EXPOSE 8005
