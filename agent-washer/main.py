@@ -8,7 +8,6 @@ import os
 import time
 import json
 import sentry_sdk
-from sentry_sdk.integrations.logging import LoggingIntegration
 
 
 # Define the AgentStatus Enum
@@ -45,14 +44,8 @@ def initGlitchTip():
         dsn=dsn,
         traces_sample_rate=1.0,
         auto_session_tracking=False,
-        enable_logs=True,
+        enable_logs=False,
         send_default_pii=True,
-        integrations=[
-            LoggingIntegration(
-                level=logging.INFO,
-                event_level=logging.ERROR,
-            )
-        ],
     )
     logger.info("Sentry initialized.")
     return logger

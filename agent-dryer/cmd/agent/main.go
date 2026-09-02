@@ -94,7 +94,7 @@ func initSentry() {
 	logger.SetFormatter(&logrus.JSONFormatter{})
 	logger.SetOutput(os.Stdout)
 	logger.SetLevel(logrus.InfoLevel)
-	hook, err := sentrylogrus.NewLogHook([]logrus.Level{logrus.InfoLevel, logrus.WarnLevel, logrus.ErrorLevel, logrus.FatalLevel, logrus.PanicLevel}, sentry.ClientOptions{})
+	hook, err := sentrylogrus.NewLogHook([]logrus.Level{logrus.ErrorLevel, logrus.FatalLevel, logrus.PanicLevel}, sentry.ClientOptions{})
 	if err != nil {
 		log.Printf("sentry log hook init failed: %v", err)
 	} else {
