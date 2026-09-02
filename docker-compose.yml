@@ -8,7 +8,7 @@ services:
       - "8001:8001"
     environment:
       - API_ENV=production
-      - GLITCHTIP_DSN=https://your_glitchtip_project_dsn_here
+      - SENTRY_DSN=https://your_sentry_project_dsn_here
     volumes:
       - ./config:/config:ro
     restart: unless-stopped
@@ -30,6 +30,7 @@ services:
       - SEND_SMS_URL=https://your_sms_webhook_url
       - SMS_USER=your_sms_username
       - SMS_PASSWORD=your_sms_password
+      - SENTRY_DSN=https://your_sentry_project_dsn_here
 
   agent-washer:
     build:
@@ -45,7 +46,7 @@ services:
       - SEND_SMS_URL=https://your_sms_webhook_url
       - SMS_USER=your_sms_username
       - SMS_PASSWORD=your_sms_password
-      - GLITCHTIP_DSN=https://your_glitchtip_project_dsn_here
+      - SENTRY_DSN=https://your_sentry_project_dsn_here
     depends_on:
       - api
     restart: unless-stopped
@@ -58,4 +59,6 @@ services:
       - "3000:8080"
     depends_on:
       - api
+    environment:
+      - VITE_SENTRY_DSN=https://your_glitchtip_project_dsn_here
     restart: unless-stopped

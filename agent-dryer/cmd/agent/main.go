@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/getsentry/sentry-go"
+	sentryfiber "github.com/getsentry/sentry-go/fiber"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/joho/godotenv"
@@ -69,7 +71,29 @@ type StateSubmission struct {
 	Timestamp time.Time
 }
 
+func initSentry() {
+	dsn := os.Getenv("SENTRY_DSN")
+	if dsn == "" {
+		log.Println("SENTRY_DSN not set; Sentry disabled")
+		return
+	}
+
+	if err := sentry.Init(sentry.ClientOptions{
+		Dsn:              dsn,
+		Debug:            false,
+		SendDefaultPII:   true,
+		EnableTracing:    true,
+		TracesSampleRate: 1.0,
+	}); err != nil {
+		log.Printf("sentry.Init: %s", err)
+		return
+	}
+	defer sentry.Flush(2 * time.Second)
+	log.Printf("Sentry initialized using SENTRY_DSN")
+}
+
 func main() {
+	initSentry()
 
 	err := godotenv.Load()
 	if err != nil {
@@ -79,6 +103,7 @@ func main() {
 	// Load user configuration from config.json
 	err = loadConfig("/config/config.json")
 	if err != nil {
+		sentry.CaptureException(err)
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
@@ -88,6 +113,7 @@ func main() {
 	}
 
 	app := fiber.New()
+	app.Use(sentryfiber.New(sentryfiber.Options{Repanic: true}))
 	app.Use(cors.New())
 
 	app.Get("/status", func(c *fiber.Ctx) error {
@@ -120,6 +146,7 @@ func main() {
 		// Get agent status from API server
 		resp, err := http.Get(API_SERVER_URL + "/dryer/getAgentStatus")
 		if err != nil {
+			sentry.CaptureException(err)
 			log.Printf("Failed to get agent status: %v", err)
 			return
 		}
@@ -130,6 +157,7 @@ func main() {
 			User   string `json:"user"`
 		}
 		if err := json.NewDecoder(resp.Body).Decode(&agentStatus); err != nil {
+			sentry.CaptureException(err)
 			log.Printf("Failed to decode agent status response: %v", err)
 			return
 		}
@@ -151,6 +179,7 @@ func main() {
 			}
 			resp, err := http.Post(API_SERVER_URL+"/dryer/checkin", "application/json", bytes.NewBuffer(checkinPayload))
 			if err != nil {
+				sentry.CaptureException(err)
 				// print at most every 30s to avoid flooding logs
 				lastFailedCheckinMutex.Lock()
 				if time.Since(lastFailedCheckinPrint) >= 30*time.Second {
@@ -236,6 +265,7 @@ func main() {
 										smsPayloadBytes, _ := json.Marshal(smsPayload)
 										req, err := http.NewRequest("POST", smsURL, bytes.NewBuffer(smsPayloadBytes))
 										if err != nil {
+											sentry.CaptureException(err)
 											log.Printf("Failed to create SMS request: %v", err)
 										} else {
 											req.Header.Set("Content-Type", "application/json")
@@ -243,6 +273,7 @@ func main() {
 											client := &http.Client{}
 											resp, err := client.Do(req)
 											if err != nil {
+												sentry.CaptureException(err)
 												log.Printf("Failed to send SMS: %v", err)
 											} else {
 												defer resp.Body.Close()

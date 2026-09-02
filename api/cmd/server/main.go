@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/getsentry/sentry-go"
+	sentryfiber "github.com/getsentry/sentry-go/fiber"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/joho/godotenv"
@@ -48,7 +49,7 @@ func main() {
 		log.Println("No .env file found or error loading .env (this is fine if env vars are set elsewhere):", err)
 	}
 
-	if dsn := os.Getenv("GLITCHTIP_DSN"); dsn != "" {
+	if dsn := os.Getenv("SENTRY_DSN"); dsn != "" {
 		err = sentry.Init(sentry.ClientOptions{
 			Dsn:              dsn,
 			Debug:            true,
@@ -60,9 +61,9 @@ func main() {
 			log.Fatalf("sentry.Init: %s", err)
 		}
 		defer sentry.Flush(2 * time.Second)
-		log.Printf("Sentry initialized using GLITCHTIP_DSN")
+		log.Printf("Sentry initialized using SENTRY_DSN")
 	} else {
-		log.Println("GLITCHTIP_DSN not set; Sentry disabled")
+		log.Println("SENTRY_DSN not set; Sentry disabled")
 	}
 
 	// Load config.json with user data
@@ -82,6 +83,7 @@ func main() {
 	log.Printf("Agent offline threshold: %v", offlineThreshold)
 
 	app := fiber.New()
+	app.Use(sentryfiber.New(sentryfiber.Options{Repanic: true}))
 
 	// Permitir CORS para todos los orígenes
 	app.Use(cors.New(cors.Config{
@@ -311,5 +313,9 @@ func main() {
 		return c.Status(fiber.StatusOK).JSON(response)
 	})
 
-	app.Listen(":8001")
+	if err := app.Listen(":8001"); err != nil {
+		sentry.CaptureException(err)
+		log.Fatalf("Failed to start API server: %v", err)
+	}
 }
+

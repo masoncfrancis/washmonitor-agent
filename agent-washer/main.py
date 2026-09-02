@@ -8,6 +8,7 @@ import os
 import time
 import json
 import sentry_sdk
+from sentry_sdk.integrations.logging import LoggingIntegration
 
 
 # Define the AgentStatus Enum
@@ -30,10 +31,10 @@ logger = logging.getLogger("washmonitor")
 
 
 def initGlitchTip():
-    """Initialize Sentry/GlitchTip using environment config and Python logging."""
-    dsn = os.environ.get("GLITCHTIP_DSN") or os.environ.get("SENTRY_DSN")
+    """Initialize Sentry using environment config and Python logging."""
+    dsn = os.environ.get("SENTRY_DSN")
     if not dsn:
-        logger.warning("No GlitchTip DSN configured. Skipping Sentry initialization.")
+        logger.warning("No Sentry DSN configured. Skipping Sentry initialization.")
         return None
 
     logging.basicConfig(
@@ -46,8 +47,14 @@ def initGlitchTip():
         auto_session_tracking=False,
         enable_logs=True,
         send_default_pii=True,
+        integrations=[
+            LoggingIntegration(
+                level=logging.INFO,
+                event_level=logging.ERROR,
+            )
+        ],
     )
-    logger.info("GlitchTip initialized.")
+    logger.info("Sentry initialized.")
     return logger
 
 
@@ -60,6 +67,8 @@ def loadConfig(configPath: str):
         userPhoneMap = {user["id"]: user["phone"] for user in users}
         print(f"Loaded config with {len(userPhoneMap)} users")
     except Exception as e:
+        sentry_sdk.capture_exception(e)
+        logger.exception("Error loading config")
         print(f"Error loading config: {e}")
         raise
 
@@ -84,7 +93,9 @@ def cameraOnline():
         r = requests.get(os.environ.get("WASHER_CAMERA_URL"), stream=True, timeout=5)
         r.close()
         return r.ok
-    except Exception:
+    except Exception as e:
+        sentry_sdk.capture_exception(e)
+        logger.exception("Error checking washer camera reachability")
         return False
 
 
@@ -99,6 +110,8 @@ def getWashingMachineStatus():
         try:
             washerImageFilePath = imgProc.getImage(os.environ.get("WASHER_CAMERA_URL"))
         except Exception as e:
+            sentry_sdk.capture_exception(e)
+            logger.exception("Error getting the washer image")
             print(f"Error getting the washer image: {e}")
             return WasherStatus.STOPPED.value  # O cualquier valor seguro
 
@@ -171,6 +184,8 @@ if __name__ == "__main__":
                 previousAgentStatus = newStatus
                 agentStatus = newStatus
             except Exception as e:
+                sentry_sdk.capture_exception(e)
+                logger.exception("Error polling agent status")
                 print(f"Error polling agent status: {e}")
             # Send a heartbeat/check-in to the API so server records last-seen
             try:
@@ -180,9 +195,11 @@ if __name__ == "__main__":
                     timeout=2,
                 )
             except Exception as e:
+                sentry_sdk.capture_exception(e)
                 now_mon = time.monotonic()
                 # print an error at most every 30 seconds
                 if now_mon - last_checkin_fail_print >= 30:
+                    logger.exception("Check-in request failed")
                     print(f"Check-in request failed: {e}")
                     last_checkin_fail_print = now_mon
             last_agent_check = now
