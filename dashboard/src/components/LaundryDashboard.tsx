@@ -248,6 +248,10 @@ const LaundryDashboard = () => {
   }, []);
 
   const handleUserClick = async (userId: number, appliance: Appliance) => {
+    const applianceUnavailable =
+      appliance === "washer" ? washerUnavailableState : dryerUnavailableState;
+    if (applianceUnavailable) return;
+
     setLoading(appliance);
     const controller = new AbortController();
     controllersRef.current.push(controller);
@@ -277,7 +281,16 @@ const LaundryDashboard = () => {
     }
   };
 
+  const washerUnavailableState =
+    !apiHealthy || washerOnline === false || washerSensorOnline === false;
+  const dryerUnavailableState =
+    !apiHealthy || dryerOnline === false || dryerSensorOnline === false;
+
   const handleApplianceClick = (appliance: Appliance) => {
+    const applianceUnavailable =
+      appliance === "washer" ? washerUnavailableState : dryerUnavailableState;
+    if (applianceUnavailable) return;
+
     const currentUser = appliance === "washer" ? washerUser : dryerUser;
 
     if (currentUser !== null) {
@@ -321,8 +334,8 @@ const LaundryDashboard = () => {
         if (washerOnline === false) {
           issues.push(
             washerLastSeen
-              ? `Washer Agent Offline (${formatRelativeTime(washerLastSeen)})`
-              : "Washer Agent Offline",
+              ? `Washer Service Offline (${formatRelativeTime(washerLastSeen)})`
+              : "Washer Service Offline",
           );
         }
         if (washerSensorOnline === false) {
@@ -331,8 +344,8 @@ const LaundryDashboard = () => {
         if (dryerOnline === false) {
           issues.push(
             dryerLastSeen
-              ? `Dryer Agent Offline (${formatRelativeTime(dryerLastSeen)})`
-              : "Dryer Agent Offline",
+              ? `Dryer Service Offline (${formatRelativeTime(dryerLastSeen)})`
+              : "Dryer Service Offline",
           );
         }
         if (dryerSensorOnline === false) {
@@ -346,18 +359,30 @@ const LaundryDashboard = () => {
         <div className="appliances-row">
           <button
             type="button"
-            className="appliance"
+            className={`appliance${washerUnavailableState ? " appliance-unavailable" : ""}`}
+            disabled={washerUnavailableState}
             style={{
-              backgroundColor: getUserById(washerUser)?.color || "#3b82f6",
+              backgroundColor: washerUnavailableState
+                ? undefined
+                : getUserById(washerUser)?.color || "#3b82f6",
             }}
             onClick={() => handleApplianceClick("washer")}
           >
-            {washerUser === null ? (
+            {washerUnavailableState && (
+              <>
+                <div className="appliance-title">Washer</div>
+                <div className="appliance-unavailable-message">
+                  Notifications are unavailable
+                </div>
+              </>
+            )}
+            {!washerUnavailableState && washerUser === null && (
               <>
                 <div className="appliance-title">Washer</div>
                 <div className="appliance-muted">Tap to receive a text message when finished</div>
               </>
-            ) : (
+            )}
+            {!washerUnavailableState && washerUser !== null && (
               <>
                 <div className="appliance-sub">
                   {getUserById(washerUser)?.name || "Unknown"} is using the
@@ -370,18 +395,30 @@ const LaundryDashboard = () => {
 
           <button
             type="button"
-            className="appliance"
+            className={`appliance${dryerUnavailableState ? " appliance-unavailable" : ""}`}
+            disabled={dryerUnavailableState}
             style={{
-              backgroundColor: getUserById(dryerUser)?.color || "#0c3a84",
+              backgroundColor: dryerUnavailableState
+                ? undefined
+                : getUserById(dryerUser)?.color || "#0c3a84",
             }}
             onClick={() => handleApplianceClick("dryer")}
           >
-            {dryerUser === null ? (
+            {dryerUnavailableState && (
+              <>
+                <div className="appliance-title">Dryer</div>
+                <div className="appliance-unavailable-message">
+                  Notifications are unavailable
+                </div>
+              </>
+            )}
+            {!dryerUnavailableState && dryerUser === null && (
               <>
                 <div className="appliance-title">Dryer</div>
                 <div className="appliance-muted">Tap to receive a text message when finished</div>
               </>
-            ) : (
+            )}
+            {!dryerUnavailableState && dryerUser !== null && (
               <>
                 <div className="appliance-sub">
                   {getUserById(dryerUser)?.name || "Unknown"} is using the
