@@ -355,7 +355,7 @@ const LaundryDashboard = () => {
             {washerUser === null ? (
               <>
                 <div className="appliance-title">Washer</div>
-                <div className="appliance-muted">Tap to get notification when finished</div>
+                <div className="appliance-muted">Tap to receive a text message when finished</div>
               </>
             ) : (
               <>
@@ -379,7 +379,7 @@ const LaundryDashboard = () => {
             {dryerUser === null ? (
               <>
                 <div className="appliance-title">Dryer</div>
-                <div className="appliance-muted">Tap to get notification when finished</div>
+                <div className="appliance-muted">Tap to receive a text message when finished</div>
               </>
             ) : (
               <>
