@@ -1,0 +1,443 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log"
+	"net/http"
+	"net/url"
+	"os"
+	"path"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+)
+
+type Config struct {
+	Role              string
+	APIServerURL      string
+	ShellyURL         string
+	ShellyComponent   string
+	ShellyUsername    string
+	ShellyPassword    string
+	PollInterval      time.Duration
+	ActiveThreshold   float64
+	InactiveThreshold float64
+	InactiveDuration  time.Duration
+	HTTPTimeout       time.Duration
+	ListenAddr        string
+	ConfigPath        string
+	SendSMSURL        string
+	SMSUser           string
+	SMSPassword       string
+}
+
+func loadConfig(getenv func(string) string) (Config, error) {
+	config := Config{
+		Role:              getenv("APPLIANCE_ROLE"),
+		APIServerURL:      getenv("API_SERVER_URL"),
+		ShellyURL:         getenv("SHELLY_URL"),
+		ShellyComponent:   getenv("SHELLY_COMPONENT"),
+		ShellyUsername:    getenv("SHELLY_USERNAME"),
+		ShellyPassword:    getenv("SHELLY_PASSWORD"),
+		PollInterval:      durationEnv(getenv, "SHELLY_POLL_INTERVAL_SECONDS", 5*time.Second),
+		ActiveThreshold:   floatEnv(getenv, "POWER_ACTIVE_THRESHOLD_W", 20),
+		InactiveThreshold: floatEnv(getenv, "POWER_INACTIVE_THRESHOLD_W", 5),
+		InactiveDuration:  durationEnv(getenv, "POWER_INACTIVE_DURATION_SECONDS", 5*time.Minute),
+		HTTPTimeout:       durationEnv(getenv, "HTTP_TIMEOUT_SECONDS", 10*time.Second),
+		ListenAddr:        getenv("LISTEN_ADDR"),
+		ConfigPath:        getenv("CONFIG_PATH"),
+		SendSMSURL:        getenv("SEND_SMS_URL"),
+		SMSUser:           getenv("SMS_USER"),
+		SMSPassword:       getenv("SMS_PASSWORD"),
+	}
+	if config.Role == "" {
+		config.Role = "washer"
+	}
+	if config.ShellyComponent == "" {
+		config.ShellyComponent = "switch:0"
+	}
+	if config.ListenAddr == "" {
+		config.ListenAddr = ":8005"
+	}
+	if config.ConfigPath == "" {
+		config.ConfigPath = "/config/config.json"
+	}
+	if config.APIServerURL == "" || config.ShellyURL == "" {
+		return Config{}, errors.New("API_SERVER_URL and SHELLY_URL are required")
+	}
+	if config.Role != "washer" && config.Role != "dryer" {
+		return Config{}, fmt.Errorf("APPLIANCE_ROLE must be washer or dryer, got %q", config.Role)
+	}
+	if config.PollInterval <= 0 || config.HTTPTimeout <= 0 || config.InactiveDuration <= 0 {
+		return Config{}, errors.New("poll interval, HTTP timeout, and inactive duration must be positive")
+	}
+	if config.InactiveThreshold < 0 || config.ActiveThreshold <= config.InactiveThreshold {
+		return Config{}, errors.New("active threshold must be greater than or equal to inactive threshold, and inactive threshold cannot be negative")
+	}
+	return config, nil
+}
+
+func durationEnv(getenv func(string) string, key string, fallback time.Duration) time.Duration {
+	value := getenv(key)
+	if value == "" {
+		return fallback
+	}
+	seconds, err := strconv.Atoi(value)
+	if err != nil || seconds <= 0 {
+		log.Printf("invalid %s=%q; using %s", key, value, fallback)
+		return fallback
+	}
+	return time.Duration(seconds) * time.Second
+}
+
+func floatEnv(getenv func(string) string, key string, fallback float64) float64 {
+	value := getenv(key)
+	if value == "" {
+		return fallback
+	}
+	parsed, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		log.Printf("invalid %s=%q; using %v", key, value, fallback)
+		return fallback
+	}
+	return parsed
+}
+
+type ShellyClient struct {
+	baseURL   string
+	component string
+	username  string
+	password  string
+	client    *http.Client
+}
+
+func (client *ShellyClient) ReadPower(ctx context.Context) (float64, error) {
+	endpoint, err := url.Parse(client.baseURL)
+	if err != nil {
+		return 0, fmt.Errorf("parse Shelly URL: %w", err)
+	}
+	endpoint.Path = path.Join(endpoint.Path, "/rpc/Shelly.GetStatus")
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
+	if err != nil {
+		return 0, fmt.Errorf("create Shelly request: %w", err)
+	}
+	if client.username != "" {
+		request.SetBasicAuth(client.username, client.password)
+	}
+	response, err := client.client.Do(request)
+	if err != nil {
+		return 0, fmt.Errorf("request Shelly status: %w", err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
+		return 0, fmt.Errorf("Shelly status returned %s", response.Status)
+	}
+
+	var status map[string]struct {
+		ActivePower float64 `json:"apower"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&status); err != nil {
+		return 0, fmt.Errorf("decode Shelly status: %w", err)
+	}
+	component, ok := status[client.component]
+	if !ok {
+		return 0, fmt.Errorf("Shelly component %q not found", client.component)
+	}
+	return component.ActivePower, nil
+}
+
+type PowerState int
+
+const (
+	unknown PowerState = iota
+	active
+	inactive
+)
+
+type PowerMonitor struct {
+	activeThreshold   float64
+	inactiveThreshold float64
+	inactiveDuration  time.Duration
+	state             PowerState
+	activeObserved    bool
+	inactiveElapsed   time.Duration
+	lastGoodAt        time.Time
+	lastObservationOK bool
+}
+
+func NewPowerMonitor(activeThreshold, inactiveThreshold float64, inactiveDuration time.Duration) *PowerMonitor {
+	return &PowerMonitor{
+		activeThreshold:   activeThreshold,
+		inactiveThreshold: inactiveThreshold,
+		inactiveDuration:  inactiveDuration,
+	}
+}
+
+func (monitor *PowerMonitor) Reset() {
+	monitor.state = unknown
+	monitor.activeObserved = false
+	monitor.inactiveElapsed = 0
+	monitor.lastGoodAt = time.Time{}
+	monitor.lastObservationOK = false
+}
+
+func (monitor *PowerMonitor) Observe(now time.Time, watts float64, err error) bool {
+	if err != nil {
+		monitor.lastObservationOK = false
+		return false
+	}
+
+	if monitor.lastObservationOK && !monitor.lastGoodAt.IsZero() {
+		elapsed := now.Sub(monitor.lastGoodAt)
+		if elapsed > 0 && monitor.state == inactive {
+			monitor.inactiveElapsed += elapsed
+		}
+	}
+	monitor.lastGoodAt = now
+	monitor.lastObservationOK = true
+
+	switch {
+	case watts >= monitor.activeThreshold:
+		monitor.state = active
+		monitor.activeObserved = true
+		monitor.inactiveElapsed = 0
+	case watts <= monitor.inactiveThreshold:
+		monitor.state = inactive
+	case monitor.state == unknown:
+		monitor.state = inactive
+	}
+
+	return monitor.activeObserved && monitor.state == inactive && monitor.inactiveElapsed >= monitor.inactiveDuration
+}
+
+func (monitor *PowerMonitor) State() PowerState {
+	return monitor.state
+}
+
+type agentStatus struct {
+	Status string `json:"status"`
+	User   string `json:"user"`
+}
+
+type User struct {
+	ID    int    `json:"id"`
+	Phone string `json:"phone"`
+}
+
+func loadUsers(configPath string) (map[int]string, error) {
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("read config: %w", err)
+	}
+	var users []User
+	if err := json.Unmarshal(data, &users); err != nil {
+		return nil, fmt.Errorf("decode config: %w", err)
+	}
+	phones := make(map[int]string, len(users))
+	for _, user := range users {
+		phones[user.ID] = user.Phone
+	}
+	return phones, nil
+}
+
+type Worker struct {
+	config      Config
+	httpClient  *http.Client
+	shelly      *ShellyClient
+	users       map[int]string
+	monitor     *PowerMonitor
+	lastStatus  string
+	statusMutex sync.Mutex
+}
+
+func (worker *Worker) route(suffix string) string {
+	return strings.TrimRight(worker.config.APIServerURL, "/") + "/" + worker.config.Role + "/" + suffix
+}
+
+func (worker *Worker) getStatus(ctx context.Context) (agentStatus, error) {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, worker.route("getAgentStatus"), nil)
+	if err != nil {
+		return agentStatus{}, err
+	}
+	response, err := worker.httpClient.Do(request)
+	if err != nil {
+		return agentStatus{}, err
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return agentStatus{}, fmt.Errorf("agent status returned %s", response.Status)
+	}
+	var status agentStatus
+	if err := json.NewDecoder(response.Body).Decode(&status); err != nil {
+		return agentStatus{}, err
+	}
+	return status, nil
+}
+
+func (worker *Worker) checkIn(ctx context.Context, sensorOK bool) error {
+	payload, _ := json.Marshal(map[string]bool{"sensorOk": sensorOK})
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, worker.route("checkin"), strings.NewReader(string(payload)))
+	if err != nil {
+		return err
+	}
+	request.Header.Set("Content-Type", "application/json")
+	response, err := worker.httpClient.Do(request)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return fmt.Errorf("check-in returned %s", response.Status)
+	}
+	return nil
+}
+
+func (worker *Worker) setIdle(ctx context.Context) error {
+	payload := strings.NewReader(`{"status":"idle"}`)
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, worker.route("setAgentStatus"), payload)
+	if err != nil {
+		return err
+	}
+	request.Header.Set("Content-Type", "application/json")
+	response, err := worker.httpClient.Do(request)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return fmt.Errorf("set idle returned %s", response.Status)
+	}
+	return nil
+}
+
+func (worker *Worker) notify(ctx context.Context, user string) error {
+	if worker.config.SendSMSURL == "" {
+		log.Printf("SEND_SMS_URL is not configured; skipping %s notification", worker.config.Role)
+		return nil
+	}
+	userID, err := strconv.Atoi(user)
+	if err != nil {
+		return fmt.Errorf("parse monitoring user %q: %w", user, err)
+	}
+	phone := worker.users[userID]
+	if phone == "" {
+		return fmt.Errorf("no phone configured for user %d", userID)
+	}
+	message := strings.ToUpper(worker.config.Role[:1]) + worker.config.Role[1:] + " has finished running"
+	payload, _ := json.Marshal(map[string]interface{}{
+		"message":      message,
+		"phoneNumbers": []string{phone},
+	})
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, worker.config.SendSMSURL, strings.NewReader(string(payload)))
+	if err != nil {
+		return err
+	}
+	request.Header.Set("Content-Type", "application/json")
+	request.SetBasicAuth(worker.config.SMSUser, worker.config.SMSPassword)
+	response, err := worker.httpClient.Do(request)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusAccepted {
+		return fmt.Errorf("SMS request returned %s", response.Status)
+	}
+	return nil
+}
+
+func (worker *Worker) run(ctx context.Context) {
+	ticker := time.NewTicker(worker.config.PollInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case now := <-ticker.C:
+			worker.tick(ctx, now)
+		}
+	}
+}
+
+func (worker *Worker) tick(ctx context.Context, now time.Time) {
+	status, err := worker.getStatus(ctx)
+	if err != nil {
+		log.Printf("get %s status: %v", worker.config.Role, err)
+		return
+	}
+	watts, readErr := worker.shelly.ReadPower(ctx)
+	if err := worker.checkIn(ctx, readErr == nil); err != nil {
+		log.Printf("check in %s worker: %v", worker.config.Role, err)
+	}
+	if readErr != nil {
+		log.Printf("read Shelly power: %v", readErr)
+		if status.Status != "monitor" {
+			worker.monitor.Reset()
+		}
+		return
+	}
+	if status.Status != "monitor" {
+		if worker.lastStatus == "monitor" {
+			worker.monitor.Reset()
+		}
+		worker.lastStatus = status.Status
+		return
+	}
+	if worker.lastStatus != "monitor" {
+		worker.monitor.Reset()
+		worker.lastStatus = "monitor"
+	}
+	if worker.monitor.Observe(now, watts, nil) {
+		if err := worker.setIdle(ctx); err != nil {
+			log.Printf("set %s idle: %v", worker.config.Role, err)
+			return
+		}
+		if err := worker.notify(ctx, status.User); err != nil {
+			log.Printf("notify %s completion: %v", worker.config.Role, err)
+		}
+		worker.monitor.Reset()
+		worker.lastStatus = "idle"
+	}
+}
+
+func main() {
+	config, err := loadConfig(os.Getenv)
+	if err != nil {
+		log.Fatal(err)
+	}
+	users, err := loadUsers(config.ConfigPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	httpClient := &http.Client{Timeout: config.HTTPTimeout}
+	worker := &Worker{
+		config:     config,
+		httpClient: httpClient,
+		users:      users,
+		monitor:    NewPowerMonitor(config.ActiveThreshold, config.InactiveThreshold, config.InactiveDuration),
+		shelly: &ShellyClient{
+			baseURL:   config.ShellyURL,
+			component: config.ShellyComponent,
+			username:  config.ShellyUsername,
+			password:  config.ShellyPassword,
+			client:    httpClient,
+		},
+	}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/status", func(response http.ResponseWriter, request *http.Request) {
+		response.Header().Set("Content-Type", "application/json")
+		_, _ = response.Write([]byte(`{"status":"ok"}`))
+	})
+	server := &http.Server{Addr: config.ListenAddr, Handler: mux}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go worker.run(ctx)
+	log.Printf("starting Shelly worker for %s on %s", config.Role, config.ListenAddr)
+	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Fatal(err)
+	}
+}
